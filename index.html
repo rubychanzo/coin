@@ -1,0 +1,1141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>코인 이평 알리미</title>
+<meta name="theme-color" content="#17191d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="이평 알리미">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+:root {
+  --bg: #ffffff; --fg: #1d2127; --muted: #6b7280; --line: #e6e8eb; --card: #f7f8fa;
+  --up: #e03131; --up-soft: #fff0f0; --down: #1c7ed6; --down-soft: #eef6ff;
+  --btn: #eef0f3; --btn-fg: #1d2127; --star: #f08c00; --star-soft: #fff8e6; --warn: #b45309; --bad: #d9480f;
+  --nav-h: 58px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17191d; --fg: #e8eaed; --muted: #9aa0a8; --line: #2b2f36; --card: #1f2227;
+    --up: #ff6b6b; --up-soft: #3a1c1f; --down: #4dabf7; --down-soft: #16283a;
+    --btn: #2a2e35; --btn-fg: #e8eaed; --star: #ffc048; --star-soft: #3a2e12; --warn: #fcc419; --bad: #ff922b;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); }
+body { font: 15px/1.45 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom)); }
+button { border: 0; background: var(--btn); color: var(--btn-fg); padding: 8px 12px; border-radius: 8px; font: inherit; cursor: pointer; }
+button.primary { background: var(--fg); color: var(--bg); font-weight: 600; }
+button:disabled { opacity: .5; }
+input, select, textarea { font: inherit; font-size: 16px; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; width: 100%; }
+textarea { resize: vertical; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.up { color: var(--up); } .down { color: var(--down); }
+b.num, .num { font-variant-numeric: tabular-nums; }
+
+/* 위쪽 */
+header.top { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: calc(10px + env(safe-area-inset-top)) 14px 8px; }
+.toprow { display: flex; align-items: center; gap: 8px; }
+.toprow h1 { font-size: 17px; margin: 0; font-weight: 800; }
+#btcChip { margin-left: auto; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; white-space: nowrap; }
+#btcChip b { color: var(--star); margin-right: 4px; }
+.seg { display: inline-flex; gap: 2px; background: var(--btn); border-radius: 999px; padding: 3px; }
+.seg button { background: transparent; color: var(--muted); padding: 5px 12px; border-radius: 999px; font-size: 13.5px; }
+.seg button.on { background: var(--fg); color: var(--bg); font-weight: 600; }
+.bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; }
+.bar input { flex: 1; min-width: 140px; }
+.page[hidden] { display: none; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+.err { margin: 10px 14px; padding: 10px 12px; border-radius: 10px; background: var(--up-soft); color: var(--up); font-size: 13px; }
+.err:empty { display: none; }
+
+/* 아래 탭 */
+nav.bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+nav.bottom button { flex: 1; background: transparent; border-radius: 0; padding: 7px 0 8px; color: var(--muted); font-size: 11.5px; display: flex; flex-direction: column; align-items: center; gap: 1px; height: var(--nav-h); }
+nav.bottom button i { font-style: normal; font-size: 19px; line-height: 1.2; }
+nav.bottom button.on { color: var(--fg); font-weight: 700; }
+
+/* 보유 코인 */
+.sumcard { margin: 12px 14px 4px; padding: 14px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
+.sumcard .lbl { font-size: 12.5px; color: var(--muted); }
+.sumcard .big { font-size: 24px; font-weight: 800; margin: 2px 0; }
+.sumcard .row2 { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.sumcard .row2 b { color: var(--fg); }
+.sumcard + .sumcard { margin-top: 8px; }
+.hcard { margin: 8px 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--bg); }
+.hcard .h1 { display: flex; align-items: baseline; gap: 6px; }
+.hcard .h1 b { font-size: 16px; }
+.hcard .h1 .pl { margin-left: auto; text-align: right; font-weight: 800; font-size: 16px; }
+.hcard .h2 { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.hcard .h2 .r { text-align: right; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 8px; }
+.chip { font-size: 12px; padding: 2px 7px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip b { font-weight: 700; margin-left: 2px; }
+.chip b.near { text-decoration: underline dashed; text-underline-offset: 2px; }
+.note { margin-top: 8px; font-size: 13px; line-height: 1.5; }
+.note.lv1 { color: var(--warn); } .note.lv2 { color: var(--bad); font-weight: 600; }
+.hacts { display: flex; gap: 6px; margin-top: 10px; }
+.hacts button { padding: 6px 10px; font-size: 13px; }
+.hacts .chartbtn { margin-left: auto; }
+.form { margin: 10px 14px; padding: 12px; border: 1px dashed var(--line); border-radius: 14px; display: grid; gap: 8px; }
+.form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form .btns { display: flex; gap: 8px; }
+.form .btns button { flex: 1; }
+.msg { font-size: 13px; color: var(--muted); min-height: 1em; }
+
+/* 시세 */
+.mlist { list-style: none; margin: 0; padding: 0; }
+.mitem { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.mitem .nm b { font-weight: 600; }
+.mitem .nm small { color: var(--muted); margin-left: 4px; font-size: 12px; }
+.mitem .px { text-align: right; font-variant-numeric: tabular-nums; }
+.mitem .ch { text-align: right; min-width: 66px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mitem .sub { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.wstar { background: transparent; padding: 0 4px 0 0; font-size: 16px; color: var(--muted); }
+.wstar.on { color: #7048e8; }
+.sig { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; }
+.sig.u { background: var(--up-soft); color: var(--up); } .sig.d { background: var(--down-soft); color: var(--down); }
+.rate { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+.rate.strong { background: var(--star); color: #fff; } .rate.mid { background: var(--star-soft); color: var(--star); border: 1px solid var(--star); } .rate.weak { background: var(--btn); color: var(--muted); }
+
+/* 신호 */
+.scanbox { margin: 12px 14px; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); display: grid; gap: 8px; }
+.prog { height: 6px; background: var(--btn); border-radius: 99px; overflow: hidden; }
+.prog i { display: block; height: 100%; width: 0; background: var(--fg); transition: width .2s; }
+.scard { padding: 11px 14px; border-bottom: 1px solid var(--line); border-left: 4px solid transparent; }
+.scard.su { border-left-color: var(--up); } .scard.sd { border-left-color: var(--down); }
+.scard.star { background: var(--star-soft); border-left-color: var(--star); }
+.scard .s1 { display: flex; align-items: baseline; gap: 6px; }
+.scard .s1 .p { margin-left: auto; font-weight: 700; }
+.scard .s2 { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.pill { padding: 1px 6px; border-radius: 5px; background: var(--btn); font-size: 11.5px; }
+.pill.conf { background: var(--fg); color: var(--bg); }
+.pill.hold { background: var(--star-soft); color: var(--star); }
+.checks { margin-top: 4px; font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 1px 8px; }
+.checks .no { color: var(--muted); opacity: .65; }
+
+/* 차트 */
+.chhead { padding: 10px 14px 4px; }
+.chhead .nm { font-size: 18px; font-weight: 800; }
+.chhead .px { font-size: 20px; font-weight: 800; margin-right: 6px; }
+#chart { height: 58vh; min-height: 300px; margin: 0 4px; position: relative; }
+.legend { display: flex; gap: 12px; padding: 6px 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+.legend a { color: var(--muted); }
+
+/* 설정 */
+.set { margin: 12px 14px; display: grid; gap: 14px; }
+.set section { padding: 12px; border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 8px; }
+.set h3 { margin: 0; font-size: 15px; }
+.checkrow { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.checkrow label { display: flex; align-items: center; gap: 5px; }
+.checkrow input { width: auto; }
+.help { font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align: center; }
+
+.toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 16px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 9px 14px; border-radius: 10px; font-size: 13.5px; z-index: 20; max-width: 90vw; }
+.toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="toprow">
+    <h1>코인 이평 알리미</h1>
+    <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
+  </div>
+</header>
+
+<!-- 보유 -->
+<main class="page" id="p-hold">
+  <div id="hSum"></div>
+  <div id="hList"></div>
+  <div class="err" id="hErr"></div>
+  <form class="form" id="hForm" autocomplete="off">
+    <b id="hFormTitle">보유 코인 추가</b>
+    <div class="two">
+      <select id="hEx"><option value="upbit">업비트</option><option value="coin">빗썸</option><option value="binance">바이낸스</option></select>
+      <input id="hCoin" list="hCoinList" placeholder="코인 (BTC, 비트코인)">
+    </div>
+    <datalist id="hCoinList"></datalist>
+    <div class="two">
+      <input id="hAvg" type="number" inputmode="decimal" step="any" min="0" placeholder="평단 (평균 매수가)">
+      <input id="hQty" type="number" inputmode="decimal" step="any" min="0" placeholder="수량">
+    </div>
+    <div class="btns"><button type="submit" class="primary" id="hSave">추가</button><button type="button" id="hCancel" hidden>취소</button></div>
+    <div class="msg" id="hMsg"></div>
+  </form>
+  <p class="help" style="margin:0 16px">이평 위치·살펴볼 점은 200·448선과의 위치를 보여주는 참고 정보예요. 매수·매도 추천이 아니에요. 평단·수량은 이 휴대폰 안에만 저장돼요.</p>
+</main>
+
+<!-- 시세 -->
+<main class="page" id="p-market" hidden>
+  <div class="bar">
+    <div class="seg" id="mEx"><button data-ex="upbit">업비트</button><button data-ex="coin">빗썸</button><button data-ex="binance">바이낸스</button></div>
+    <div class="seg" id="mSort"><button data-s="turnover">거래대금</button><button data-s="chg">등락률</button><button data-s="watch">관심</button></div>
+    <input id="mFilter" placeholder="코인 이름·기호로 찾기" type="search">
+  </div>
+  <div class="muted small" style="padding:0 14px 6px" id="mStatus"></div>
+  <div class="err" id="mErr"></div>
+  <ul class="mlist" id="mList"></ul>
+</main>
+
+<!-- 신호 -->
+<main class="page" id="p-sig" hidden>
+  <div class="scanbox">
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="primary" id="scanBtn" style="flex:1">지금 스캔</button>
+      <div class="seg" id="sDir"><button data-d="up">▲ 상향</button><button data-d="down">▼ 하향</button></div>
+    </div>
+    <div class="prog" hidden id="scanProg"><i></i></div>
+    <div class="muted small" id="scanStatus"></div>
+  </div>
+  <div class="err" id="sErr"></div>
+  <div id="sList"></div>
+</main>
+
+<!-- 차트 -->
+<main class="page" id="p-chart" hidden>
+  <div class="chhead">
+    <div><span class="nm" id="cName">BTC</span> <span class="muted small" id="cSym"></span></div>
+    <div><span class="px num" id="cPx"></span><span id="cGap" class="small"></span></div>
+  </div>
+  <div class="bar" style="padding-top:4px">
+    <div class="seg" id="cTf"><button data-tf="5m">5분</button><button data-tf="1h">1시간</button><button data-tf="4h">4시간</button><button data-tf="1d">일봉</button></div>
+    <div class="seg" id="cEx"><button data-ex="upbit">업</button><button data-ex="coin">빗</button><button data-ex="binance">바</button></div>
+  </div>
+  <div id="chart"></div>
+  <div class="legend"><span><i style="background:#e8a200"></i>200선</span><span><i style="background:#2f9e44"></i>448선</span><span id="cMsg"></span><span style="margin-left:auto">차트: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts</a></span></div>
+</main>
+
+<!-- 설정 -->
+<main class="page" id="p-set" hidden>
+  <div class="set">
+    <section>
+      <h3>관심 코인</h3>
+      <textarea id="sWatch" rows="4" placeholder="한 줄에 하나: KRW-BTC (업비트) · BTC-KRW (빗썸) · BTCUSDT (바이낸스) · 그냥 SOL 이라고 쓰면 업비트"></textarea>
+      <div class="help">관심 코인과 보유 코인은 스캔할 때 항상 확인해요. 시세 목록의 ☆를 눌러도 들어가요.</div>
+    </section>
+    <section>
+      <h3>스캔 범위</h3>
+      <div class="checkrow"><label><input type="checkbox" data-sx="upbit"> 업비트</label><label><input type="checkbox" data-sx="coin"> 빗썸</label><label><input type="checkbox" data-sx="binance"> 바이낸스</label></div>
+      <label class="help">거래대금 상위 몇 개까지 볼까요 (거래소마다)
+        <select id="sTop"><option value="0">관심·보유만</option><option value="10">상위 10개</option><option value="20">상위 20개</option><option value="40">상위 40개 (오래 걸림)</option></select></label>
+      <div class="help">볼 봉</div>
+      <div class="checkrow"><label><input type="checkbox" data-stf="5m"> 5분</label><label><input type="checkbox" data-stf="1h"> 1시간</label><label><input type="checkbox" data-stf="4h"> 4시간</label><label><input type="checkbox" data-stf="1d"> 일봉</label></div>
+      <div class="two" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <label class="help">거래량 기준<select id="sVol"><option value="1.5">1.5배 이상</option><option value="2">2배 이상</option><option value="3">3배 이상</option></select></label>
+        <label class="help">★ 표시 기준<select id="sStar"><option value="6">6점 이상</option><option value="7">7점 이상</option><option value="8">8점 이상</option></select></label>
+      </div>
+      <label class="help">상향 돌파 확인 (돌파 후 5분봉이 선 위에서 연속 마감)<select id="sHold"><option value="0">끔</option><option value="2">5분봉 2개</option><option value="3">5분봉 3개</option></select></label>
+    </section>
+    <section>
+      <h3>보유 코인 이평 볼 봉</h3>
+      <div class="checkrow"><label><input type="checkbox" data-htf="5m"> 5분</label><label><input type="checkbox" data-htf="1h"> 1시간</label><label><input type="checkbox" data-htf="4h"> 4시간</label><label><input type="checkbox" data-htf="1d"> 일봉</label></div>
+    </section>
+    <button class="primary" id="sSave">저장</button>
+    <section>
+      <h3>노트북에서 가져오기</h3>
+      <div class="help">노트북 알리미의 <b>보유 코인</b> 탭에서 <b>휴대폰으로 보내기</b>를 누르면 QR 코드가 떠요. 휴대폰 카메라로 찍으면 이 페이지가 열리면서 보유·관심 코인을 가져와요. QR을 못 쓰면 거기 나오는 코드를 복사해서 아래에 붙여넣어도 돼요.</div>
+      <textarea id="iCode" rows="2" placeholder="코드 붙여넣기"></textarea>
+      <button id="iBtn">코드로 가져오기</button>
+    </section>
+    <section>
+      <h3>이 휴대폰 데이터</h3>
+      <div class="help">보유·관심 코인과 설정은 이 휴대폰 브라우저 안에만 저장돼요. 브라우저 방문 기록·사이트 데이터를 지우면 함께 지워져요.</div>
+      <button id="resetBtn">모두 지우기</button>
+    </section>
+  </div>
+  <footer class="disc">시세: 업비트·빗썸·바이낸스 공개 시세 · ★·조건 점수는 체크리스트이며 예측·투자 권유가 아니에요</footer>
+</main>
+
+<nav class="bottom">
+  <button data-p="hold"><i>💼</i>보유</button>
+  <button data-p="market"><i>📊</i>시세</button>
+  <button data-p="sig"><i>⚡</i>신호</button>
+  <button data-p="chart"><i>📈</i>차트</button>
+  <button data-p="set"><i>⚙️</i>설정</button>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.2.3/lightweight-charts.standalone.production.min.js"></script>
+<script>
+// 지표 계산 (배열은 과거 → 최신 순)
+
+function sma(arr, n, i) {
+  if (i < n - 1) return NaN;
+  let s = 0;
+  for (let k = i - n + 1; k <= i; k++) s += arr[k];
+  return s / n;
+}
+
+function emaSeries(arr, n) {
+  const k = 2 / (n + 1), out = new Array(arr.length);
+  out[0] = arr[0];
+  for (let i = 1; i < arr.length; i++) out[i] = arr[i] * k + out[i - 1] * (1 - k);
+  return out;
+}
+
+function rsiSeries(close, n = 14) {
+  const out = new Array(close.length).fill(NaN);
+  if (close.length <= n) return out;
+  let g = 0, l = 0;
+  for (let i = 1; i <= n; i++) {
+    const d = close[i] - close[i - 1];
+    if (d > 0) g += d; else l -= d;
+  }
+  g /= n; l /= n;
+  out[n] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  for (let i = n + 1; i < close.length; i++) {
+    const d = close[i] - close[i - 1];
+    g = (g * (n - 1) + Math.max(d, 0)) / n;
+    l = (l * (n - 1) + Math.max(-d, 0)) / n;
+    out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  }
+  return out;
+}
+
+function macdSeries(close) {
+  const e12 = emaSeries(close, 12), e26 = emaSeries(close, 26);
+  const macd = close.map((_, i) => e12[i] - e26[i]);
+  const sig = emaSeries(macd, 9);
+  return { macd, sig };
+}
+
+// Parabolic SAR: true = 상승 추세(점이 가격 아래)
+function sarUpSeries(high, low, step = 0.02, max = 0.2) {
+  const n = high.length, up = new Array(n).fill(true);
+  if (n < 2) return up;
+  let bull = high[1] >= high[0];
+  let sar = bull ? low[0] : high[0];
+  let ep = bull ? high[1] : low[1];
+  let af = step;
+  up[0] = up[1] = bull;
+  for (let i = 2; i < n; i++) {
+    sar = sar + af * (ep - sar);
+    if (bull) {
+      sar = Math.min(sar, low[i - 1], low[i - 2]);
+      if (low[i] < sar) { bull = false; sar = ep; ep = low[i]; af = step; }
+      else if (high[i] > ep) { ep = high[i]; af = Math.min(af + step, max); }
+    } else {
+      sar = Math.max(sar, high[i - 1], high[i - 2]);
+      if (high[i] > sar) { bull = true; sar = ep; ep = high[i]; af = step; }
+      else if (low[i] < ep) { ep = low[i]; af = Math.min(af + step, max); }
+    }
+    up[i] = bull;
+  }
+  return up;
+}
+
+// candles: [{t, o, c, h, l, v}] 과거→최신, 마지막 원소는 진행 중인 봉
+// periods: 볼 이평 목록(예: [200, 448]) → 이평별 교차 신호
+// lastClosed = true 이면 마지막 봉도 마감된 봉(장 마감 후)
+// recent: 마감봉 중 최근 몇 개까지 교차를 확인할지(스캔 사이에 지나간 봉을 놓치지 않도록)
+function detectCrosses(candles, s, lastClosed = false, periods = [200], recent = 1) {
+  const n = candles.length;
+  const minP = Math.min(...periods);
+  if (n < minP + 3) return [];
+  const close = candles.map(x => x.c), vol = candles.map(x => x.v);
+  const high = candles.map(x => x.h), low = candles.map(x => x.l);
+  const rsi = rsiSeries(close), { macd, sig } = macdSeries(close), sar = sarUpSeries(high, low);
+  const out = [];
+  const lastIdx = lastClosed ? n - 1 : n - 2;
+  const targets = [];
+  for (let i = Math.max(minP + 1, lastIdx - Math.max(1, recent) + 1); i <= lastIdx; i++) targets.push({ i, status: "confirmed" });
+  if (!lastClosed && s.includePrelim) targets.push({ i: n - 1, status: "prelim" });
+
+  for (const period of periods) {
+    if (n < period + 3) continue;
+    for (const { i, status } of targets) {
+      const ma = sma(close, period, i), maPrev = sma(close, period, i - 1);
+      let dir = null;
+      if (close[i] > ma && close[i - 1] <= maPrev) dir = "up";
+      else if (close[i] < ma && close[i - 1] >= maPrev) dir = "down";
+      if (!dir) continue;
+      // 장전·장후처럼 거래량 수준이 다른 세션이 섞이면 같은 세션 봉끼리만 평균 (s.sessionOf 가 있을 때)
+      let volAvg;
+      const sess = s.sessionOf ? s.sessionOf(candles[i].t) : null;
+      if (sess) {
+        let vs = 0, cnt = 0;
+        for (let k = i - 1; k >= 0 && cnt < s.volLookback && i - k < 600; k--) {
+          if (s.sessionOf(candles[k].t) === sess) { vs += vol[k]; cnt++; }
+        }
+        volAvg = cnt >= 5 ? vs / cnt : NaN;
+      }
+      if (!(volAvg > 0)) {
+        let vs = 0;
+        for (let k = i - s.volLookback; k < i; k++) vs += vol[k];
+        volAvg = vs / s.volLookback;
+      }
+      const volRatio = volAvg > 0 ? vol[i] / volAvg : 0;
+      if (volRatio < s.volMult) continue;
+      const range = high[i] - low[i];
+      // 다른 이평들과의 위치 (둘 다 위/아래인지)
+      const others = {};
+      for (const p of [200, 448]) {
+        if (p === period) continue;
+        const m = sma(close, p, i);
+        others[p] = Number.isNaN(m) ? null : close[i] > m;
+      }
+      const otherVals = Object.values(others).filter(v => v !== null);
+      const allSide = otherVals.length > 0 && otherVals.every(v => v === (dir === "up"));
+      out.push({
+        period, dir, status, t: candles[i].t, price: close[i], ma,
+        gap: (close[i] / ma - 1) * 100, volRatio,
+        rsi: rsi[i],
+        macdUp: macd[i] > sig[i], macdCross: (macd[i] > sig[i]) !== (macd[i - 1] > sig[i - 1]),
+        sarUp: sar[i],
+        closePos: range > 0 ? (close[i] - low[i]) / range : 0.5,   // 봉 안에서 종가 위치(1 = 고가 마감)
+        maRising: ma > sma(close, period, i - 10),                 // 이평 기울기 상승
+        others, allSide                                             // allSide: 200·448 모두 같은 쪽(둘 다 위/아래)
+      });
+    }
+  }
+  return out;
+}
+
+// 마지막 확정봉 종가가 해당 이평 위인지 (상위 추세 확인용)
+function aboveMa200(candles, lastClosed = false, period = 200) {
+  const n = candles.length;
+  if (n < period + 2) return null;
+  const close = candles.map(x => x.c);
+  const i = lastClosed ? n - 1 : n - 2;
+  return close[i] > sma(close, period, i);
+}
+
+// 상향 돌파 신호의 조건 충족 점수 (예측이 아니라 체크리스트)
+function scoreUp(sig, ctx) {
+  const checks = [
+    { label: "봉 마감 확정", ok: sig.status === "confirmed" },
+    { label: "거래량 3배 이상", ok: sig.volRatio >= 3 },
+    { label: "MACD 골든", ok: sig.macdUp },
+    { label: "SAR 상승", ok: sig.sarUp },
+    { label: "RSI 50~70 (과열 아님)", ok: sig.rsi >= 50 && sig.rsi <= 70 },
+    { label: `${sig.period || 200}선 기울기 상승`, ok: sig.maRising },
+    { label: "고가 부근 마감(윗꼬리 짧음)", ok: sig.closePos >= 0.7 },
+    { label: ctx.liquidLabel, ok: !!ctx.liquid }
+  ];
+  for (const [p, v] of Object.entries(sig.others || {})) {
+    if (v !== null) checks.push({ label: `${p}선도 위`, ok: v });
+  }
+  const da = ctx.dailyAbove && typeof ctx.dailyAbove === "object" ? ctx.dailyAbove[sig.period || 200] : ctx.dailyAbove;
+  if (sig.tf !== "1d" && da != null) checks.push({ label: `일봉도 ${sig.period || 200}선 위`, ok: da });
+  const score = checks.filter(c => c.ok).length;
+  return { score, max: checks.length, checks };
+}
+
+if (typeof module !== "undefined") module.exports = { detectCrosses, scoreUp, aboveMa200, rsiSeries, sarUpSeries, macdSeries, sma };
+
+// ---------- 개별 종목 분석 ----------
+// 한 봉 묶음(candles)의 현재 상태와 최근 교차, 차트용 데이터
+function analyzeSeries(candles, lastClosed = false, chartBars = 150) {
+  const n = candles.length;
+  if (n < 30) return { n, insufficient: true };
+  const close = candles.map(x => x.c), vol = candles.map(x => x.v);
+  const high = candles.map(x => x.h), low = candles.map(x => x.l);
+  const rsi = rsiSeries(close), { macd, sig } = macdSeries(close), sar = sarUpSeries(high, low);
+  const last = n - 1, lastDone = lastClosed ? n - 1 : n - 2;
+  const maInfo = {};
+  for (const p of [200, 448]) {
+    if (n < p + 1) { maInfo[p] = null; continue; }
+    const ma = sma(close, p, last);
+    const slopeRef = sma(close, p, last - 10);
+    // 가장 최근 교차 찾기 (마감봉 기준)
+    let cross = null;
+    for (let i = lastDone; i >= p; i--) {
+      const m = sma(close, p, i), mp = sma(close, p, i - 1);
+      if (close[i] > m && close[i - 1] <= mp) { cross = { dir: "up", t: candles[i].t, barsAgo: lastDone - i }; break; }
+      if (close[i] < m && close[i - 1] >= mp) { cross = { dir: "down", t: candles[i].t, barsAgo: lastDone - i }; break; }
+    }
+    maInfo[p] = { ma, gap: (close[last] / ma - 1) * 100, rising: Number.isNaN(slopeRef) ? null : ma > slopeRef, cross };
+  }
+  let vs = 0;
+  for (let k = lastDone - 20; k < lastDone; k++) vs += vol[k];
+  const volRatio = vs > 0 ? vol[lastDone] / (vs / 20) : null;
+  const from = Math.max(0, n - chartBars);
+  const chart = [];
+  for (let i = from; i < n; i++) {
+    chart.push({ t: candles[i].t, o: candles[i].o, h: high[i], l: low[i], c: close[i],
+      m200: n >= 200 ? sma(close, 200, i) : NaN, m448: n >= 448 ? sma(close, 448, i) : NaN });
+  }
+  const range = high[last] - low[last];
+  return {
+    n, price: close[last], t: candles[last].t, lastClosed,
+    ma: maInfo, rsi: rsi[last], macdUp: macd[last] > sig[last], sarUp: sar[last], volRatio,
+    closePos: range > 0 ? (close[last] - low[last]) / range : 0.5,
+    chart
+  };
+}
+
+if (typeof module !== "undefined") module.exports.analyzeSeries = analyzeSeries;
+
+function confirmUps(sigs, c5, c5Closed, holdBars) {
+  if (!holdBars) return sigs;
+  const closed = c5 ? (c5Closed ? c5 : c5.slice(0, -1)) : null;
+  return sigs.filter(f => {
+    if (f.dir !== "up") return true;
+    if (!closed || !closed.length) return false;
+    let level = f.ma;
+    if (f.tf === "5m") {
+      // 5분봉 신호: 돌파 봉 이후 봉들이 각자 시점의 이평선 위에서 마감했는지 확인
+      const close = closed.map(x => x.c);
+      const idx = closed.findIndex(x => x.t === f.t);
+      if (idx < 0) return false;
+      let cnt = 0;
+      for (let i = idx + 1; i < closed.length; i++) {
+        const m = sma(close, f.period, i);
+        if (!(close[i] > m)) break;
+        cnt++;
+      }
+      f.hold5m = cnt;
+      return cnt >= holdBars && idx + cnt === closed.length - 1; // 지금까지 계속 선 위
+    }
+    // 1시간·4시간·일봉 신호: 돌파가 일어난 봉 이후의 5분봉 중 최근 holdBars개가 모두 그 이평선 위
+    const after = closed.filter(x => x.t >= f.t);
+    let cnt = 0;
+    for (let i = after.length - 1; i >= 0 && after[i].c > level; i--) cnt++;
+    f.hold5m = cnt;
+    return cnt >= holdBars;
+  });
+}
+
+</script>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const EX_LABEL = { upbit: "업비트", coin: "빗썸", binance: "바이낸스" };
+const TF_LIST = ["5m", "1h", "4h", "1d"];
+const TF_LABEL = { "5m": "5분봉", "1h": "1시간봉", "4h": "4시간봉", "1d": "일봉" };
+const TF_MIN = { "5m": 5, "1h": 60, "4h": 240, "1d": 1440 };
+const LIQ = { coin: { min: 1e9, label: "24h 거래대금 10억원 이상" }, upbit: { min: 1e9, label: "24h 거래대금 10억원 이상" }, binance: { min: 5e6, label: "24h 거래대금 500만 달러 이상" } };
+
+// ---------- 저장 ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("cm." + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
+  set(k, v) { try { localStorage.setItem("cm." + k, JSON.stringify(v)); } catch (_) {} }
+};
+const DEF = { scanEx: { upbit: true, coin: false, binance: false }, top: 20, tfs: { "5m": false, "1h": true, "4h": true, "1d": true },
+  volMult: 2, starMin: 7, holdBars: 3, holdTfs: { "5m": false, "1h": true, "4h": true, "1d": true }, watch: "" };
+let S = { ...DEF, ...store.get("settings", {}) };
+let holdings = store.get("holdings", []);
+
+function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
+
+// ---------- 시세 가져오기 ----------
+const HOST = { upbit: "https://api.upbit.com/v1", coin: "https://api.bithumb.com", binance: ["https://api.binance.com", "https://data-api.binance.vision"] };
+const gap = { upbit: 130, coin: 130 }; const nextAt = { upbit: 0, coin: 0 };
+async function getJSON(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
+  return r.json();
+}
+// 업비트·빗썸은 초당 요청 수 제한이 있어서 천천히
+async function paced(ex, url) {
+  for (let a = 0; a < 3; a++) {
+    const now = Date.now(), wait = Math.max(0, nextAt[ex] - now);
+    nextAt[ex] = Math.max(now, nextAt[ex]) + gap[ex];
+    await sleep(wait);
+    try { return await getJSON(url); }
+    catch (e) { if (e.status === 429) { await sleep(1000 * (a + 1)); continue; } throw netErr(ex, e); }
+  }
+  throw new Error(`${EX_LABEL[ex]} 요청이 너무 많아요. 잠시 뒤 다시 해 주세요.`);
+}
+async function binanceGet(path) {
+  let last;
+  for (const h of HOST.binance) { try { return await getJSON(h + path); } catch (e) { last = e; } }
+  throw netErr("binance", last);
+}
+function netErr(ex, e) {
+  if (e instanceof TypeError) return new Error(`${EX_LABEL[ex]}에 연결하지 못했어요 (인터넷 연결 또는 거래소 차단)`);
+  return e;
+}
+const V1_PATH = { "5m": "/candles/minutes/5", "1h": "/candles/minutes/60", "4h": "/candles/minutes/240", "1d": "/candles/days" };
+async function pagedV1(ex, tf, sym, need) {
+  const base = ex === "upbit" ? HOST.upbit : HOST.coin + "/v1";
+  const toFmt = ex === "upbit" ? r => r.candle_date_time_utc + "Z" : r => r.candle_date_time_kst.replace("T", " ");
+  let out = [], to = "";
+  while (out.length < need) {
+    const page = await paced(ex, `${base}${V1_PATH[tf]}?market=KRW-${sym}&count=200${to ? `&to=${encodeURIComponent(to)}` : ""}`);
+    if (!Array.isArray(page) || !page.length) break;
+    out = out.concat(page);
+    if (page.length < 200) break;
+    to = toFmt(page[page.length - 1]);
+  }
+  return out.reverse().map(r => ({ t: Date.parse(r.candle_date_time_utc + "Z"), o: r.opening_price, h: r.high_price, l: r.low_price, c: r.trade_price, v: r.candle_acc_trade_volume }));
+}
+// 봉은 잠깐 기억해 두고 다시 씀 (5분봉 1분, 나머지 3분)
+const cCache = new Map();
+async function candles(ex, sym, tf, need = 475) {
+  const k = `${ex}|${sym}|${tf}`, c = cCache.get(k);
+  if (c && Date.now() - c.at < (tf === "5m" ? 60e3 : 180e3) && c.v.length >= Math.min(need, c.full)) return c.v;
+  let v;
+  if (ex === "binance") {
+    const j = await binanceGet(`/api/v3/klines?symbol=${sym}&interval=${tf}&limit=${Math.min(1000, Math.max(need, 500))}`);
+    v = j.map(r => ({ t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }));
+  } else v = await pagedV1(ex, tf, sym, need);
+  cCache.set(k, { at: Date.now(), v, full: v.length });
+  return v;
+}
+const tCache = {};
+async function tickers(ex, maxAge = 10e3) {
+  const c = tCache[ex];
+  if (c && Date.now() - c.at < maxAge) return c.rows;
+  let rows;
+  if (ex === "upbit") {
+    const all = (await paced("upbit", `${HOST.upbit}/market/all?isDetails=true`)).filter(m => m.market.startsWith("KRW-"));
+    rows = [];
+    for (let i = 0; i < all.length; i += 100) {
+      const chunk = all.slice(i, i + 100);
+      const tk = await paced("upbit", `${HOST.upbit}/ticker?markets=${chunk.map(m => m.market).join(",")}`);
+      const by = Object.fromEntries(tk.map(t => [t.market, t]));
+      for (const m of chunk) { const t = by[m.market]; if (t) rows.push({ mkt: "upbit", sym: m.market.slice(4), name: m.korean_name, price: t.trade_price, chg: (t.signed_change_rate || 0) * 100, turnover: t.acc_trade_price_24h }); }
+    }
+  } else if (ex === "coin") {
+    const tick = await paced("coin", `${HOST.coin}/public/ticker/ALL_KRW`);
+    const names = {};
+    try { for (const m of await paced("coin", `${HOST.coin}/v1/market/all?isDetails=false`)) if (m.market?.startsWith("KRW-")) names[m.market.slice(4)] = m.korean_name; } catch (_) {}
+    rows = Object.entries(tick.data || {}).filter(([k, v]) => k !== "date" && v && typeof v === "object")
+      .map(([sym, v]) => ({ mkt: "coin", sym, name: names[sym] || sym, price: +v.closing_price, chg: +v.fluctate_rate_24H, turnover: +v.acc_trade_value_24H }));
+  } else {
+    const EXC = new Set(["USDC", "FDUSD", "TUSD", "BUSD", "DAI", "USDP", "USD1", "EUR", "AEUR", "EURI", "PAXG", "XUSD", "USDE", "BFUSD"]);
+    const dayAgo = Date.now() - 86400e3;
+    rows = (await binanceGet("/api/v3/ticker/24hr")).filter(x => /USDT$/.test(x.symbol) && !/(UP|DOWN|BULL|BEAR)USDT$/.test(x.symbol) && x.closeTime > dayAgo && +x.quoteVolume > 0)
+      .map(x => ({ mkt: "binance", sym: x.symbol, name: x.symbol.replace(/USDT$/, ""), price: +x.lastPrice, chg: +x.priceChangePercent, turnover: +x.quoteVolume }))
+      .filter(x => !EXC.has(x.name));
+  }
+  tCache[ex] = { at: Date.now(), rows };
+  return rows;
+}
+
+// ---------- 숫자 표시 ----------
+function fmtPrice(p, mkt) {
+  if (p == null || !isFinite(p)) return "–";
+  if (mkt === "binance") return "$" + (p >= 100 ? p.toLocaleString("en-US", { maximumFractionDigits: 2 }) : Number(p.toPrecision(4)).toString());
+  if (p < 100) return Number(p.toPrecision(4)).toLocaleString("ko-KR") + "원";
+  return Math.round(p).toLocaleString("ko-KR") + "원";
+}
+const money = (v, mkt, sign) => {
+  if (v == null || !isFinite(v)) return "–";
+  const sg = sign && v > 0 ? "+" : v < 0 ? "-" : "", a = Math.abs(v);
+  return mkt === "binance" ? `${sg}$${a.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `${sg}${Math.round(a).toLocaleString("ko-KR")}원`;
+};
+const pct = v => v == null || !isFinite(v) ? "–" : `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
+const cls = v => v > 0 ? "up" : v < 0 ? "down" : "";
+const fmtTurn = (v, mkt) => !v ? "–" : mkt === "binance" ? (v >= 1e9 ? `$${(v / 1e9).toFixed(2)}B` : `$${(v / 1e6).toFixed(1)}M`) : v >= 1e12 ? `${(v / 1e12).toFixed(2)}조` : `${Math.round(v / 1e8).toLocaleString("ko-KR")}억`;
+function kst(t, tf) {
+  const d = new Date(t + 9 * 3600e3);
+  const md = `${d.getUTCMonth() + 1}/${d.getUTCDate()}`;
+  return tf === "1d" ? md : `${md} ${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
+}
+
+// ---------- 관심 코인 ----------
+function parseWatch(text) {
+  const out = [], seen = new Set();
+  for (const line of String(text || "").split(/\n|,/)) {
+    const [tok, ...rest] = line.trim().split(/\s+/);
+    if (!tok) continue;
+    const up = tok.toUpperCase();
+    let m, it = null;
+    if ((m = up.match(/^KRW-([A-Z0-9]+)$/))) it = { mkt: "upbit", sym: m[1] };
+    else if ((m = up.match(/^([A-Z0-9]+)-KRW$/))) it = { mkt: "coin", sym: m[1] };
+    else if (/^[A-Z0-9]{2,}USDT$/.test(up)) it = { mkt: "binance", sym: up };
+    else if (/^[A-Z0-9]{2,10}$/.test(up)) it = { mkt: "upbit", sym: up };
+    if (!it) continue;
+    const k = it.mkt + "|" + it.sym;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ ...it, name: rest.join(" ") || (it.mkt === "binance" ? it.sym.replace(/USDT$/, "") : it.sym) });
+  }
+  return out;
+}
+const watchCode = (mkt, sym) => mkt === "upbit" ? "KRW-" + sym : mkt === "coin" ? sym + "-KRW" : sym;
+const watchSet = () => new Set(parseWatch(S.watch).map(x => x.mkt + "|" + x.sym));
+function toggleWatch(mkt, sym, name) {
+  const key = mkt + "|" + sym;
+  const lines = String(S.watch || "").split("\n").filter(l => l.trim());
+  const keep = lines.filter(l => !parseWatch(l).some(x => x.mkt + "|" + x.sym === key));
+  const on = keep.length === lines.length;
+  if (on) keep.push(`${watchCode(mkt, sym)} ${String(name || "").replace(/\s+/g, "")}`.trim());
+  S.watch = keep.join("\n");
+  store.set("settings", S);
+  return on;
+}
+
+// ---------- 화면 전환 ----------
+let page = store.get("page", "hold");
+function show(p) {
+  page = p; store.set("page", p);
+  document.querySelectorAll("main.page").forEach(m => { m.hidden = m.id !== "p-" + p; });
+  document.querySelectorAll("nav.bottom button").forEach(b => b.classList.toggle("on", b.dataset.p === p));
+  if (p === "hold") loadHold();
+  if (p === "market") loadMarket();
+  if (p === "sig") renderSignals();
+  if (p === "chart") loadChart();
+  if (p === "set") fillSettings();
+  window.scrollTo(0, 0);
+}
+document.querySelector("nav.bottom").addEventListener("click", e => { const b = e.target.closest("button[data-p]"); if (b) show(b.dataset.p); });
+
+// ---------- BTC 칩 ----------
+async function loadBtc() {
+  try {
+    const rows = await tickers("upbit", 8e3);
+    const b = rows.find(r => r.sym === "BTC");
+    if (b) $("#btcPx").innerHTML = `${fmtPrice(b.price, "upbit")} <span class="${cls(b.chg)}">${pct(b.chg)}</span>`;
+  } catch (_) { $("#btcPx").textContent = "–"; }
+}
+$("#btcChip").addEventListener("click", () => { C.cur = { mkt: "upbit", sym: "BTC", name: "비트코인" }; store.set("chartCur", C.cur); show("chart"); });
+
+// ---------- 보유 코인 ----------
+const H = { status: {}, editing: null };
+async function holdStatus() {
+  const tfs = TF_LIST.filter(tf => S.holdTfs[tf]);
+  const exs = [...new Set(holdings.map(h => h.mkt))];
+  const ticks = {};
+  const errs = [];
+  await Promise.all(exs.map(async ex => { try { ticks[ex] = await tickers(ex); } catch (e) { ticks[ex] = []; errs.push(e.message); } }));
+  for (const h of holdings) {
+    const t = ticks[h.mkt].find(x => x.sym === h.sym);
+    const st = H.status[h.id] || { lines: {} };
+    st.price = t?.price ?? st.price; st.chg = t?.chg ?? st.chg;
+    H.status[h.id] = st;
+  }
+  renderHold();
+  // 선 위치는 하나씩 (업비트·빗썸 요청 제한)
+  for (const h of holdings) {
+    const st = H.status[h.id];
+    for (const tf of tfs) {
+      try {
+        const c = await candles(h.mkt, h.sym, tf);
+        const close = c.map(x => x.c), i = close.length - 1, p = st.price ?? close[i];
+        if (st.price == null) st.price = close[i];
+        const m2 = i >= 199 ? sma(close, 200, i) : null, m4 = i >= 447 ? sma(close, 448, i) : null;
+        st.lines[tf] = { g200: m2 ? (p / m2 - 1) * 100 : null, g448: m4 ? (p / m4 - 1) * 100 : null };
+      } catch (e) { st.lines[tf] = { error: e.message }; if (!errs.includes(e.message)) errs.push(e.message); }
+      renderHold();
+    }
+  }
+  $("#hErr").textContent = errs.join(" · ");
+}
+function lineView(st, tfs) {
+  if (!st || !st.lines) return { chips: "", note: "", level: 0 };
+  const chips = tfs.map(tf => {
+    const L = st.lines[tf];
+    if (!L) return `<span class="chip">${TF_LABEL[tf].replace("봉", "")} …</span>`;
+    if (L.error) return `<span class="chip">${TF_LABEL[tf].replace("봉", "")} –</span>`;
+    const one = (per, g) => g == null ? "" : `<b class="${g >= 0 ? "up" : "down"}${Math.abs(g) <= 1 ? " near" : ""}">${g >= 0 ? "▲" : "▼"}${per}</b>`;
+    return `<span class="chip">${TF_LABEL[tf].replace("봉", "")}${one(200, L.g200)}${one(448, L.g448)}</span>`;
+  }).join("");
+  const notes = []; let level = 0;
+  for (const tf of tfs) {
+    const L = st.lines[tf]; if (!L || L.error) continue;
+    for (const per of [200, 448]) {
+      const g = L["g" + per];
+      if (g != null && Math.abs(g) <= 1) { notes.push(`${TF_LABEL[tf]} ${per}선 근처(${pct(g)}) — ${g >= 0 ? "이탈" : "돌파"} 여부 지켜보기`); level = Math.max(level, 1); }
+    }
+  }
+  const main = [...tfs].reverse().find(tf => st.lines[tf] && !st.lines[tf].error && st.lines[tf].g200 != null);
+  if (main) {
+    const L = st.lines[main], a2 = L.g200 >= 0, a4 = L.g448 == null ? a2 : L.g448 >= 0;
+    if (!a2 && !a4) { notes.unshift(`${TF_LABEL[main]} 200·448선 아래 — 주의`); level = 2; }
+    else if (a2 !== a4) { notes.unshift(`${TF_LABEL[main]} 두 선 사이 — 방향 확인 필요`); level = Math.max(level, 1); }
+    else notes.unshift(`${TF_LABEL[main]} 200·448선 위 — 흐름 유지 중`);
+  }
+  return { chips, note: notes.join(" · "), level };
+}
+function renderHold() {
+  const tfs = TF_LIST.filter(tf => S.holdTfs[tf]);
+  const sums = {};
+  $("#hList").innerHTML = holdings.length ? holdings.map(h => {
+    const st = H.status[h.id] || {};
+    const cost = h.avg * h.qty, value = st.price != null ? st.price * h.qty : null;
+    const pl = value != null ? value - cost : null, plp = value != null && cost ? (value / cost - 1) * 100 : null;
+    const c = h.mkt === "binance" ? "$" : "원";
+    sums[c] = sums[c] || { cost: 0, value: 0, mkt: h.mkt, ok: true };
+    sums[c].cost += cost; if (value != null) sums[c].value += value; else sums[c].ok = false;
+    const lv = lineView(st, tfs);
+    return `<div class="hcard" data-id="${esc(h.id)}">
+      <div class="h1"><b>${esc(h.name)}</b><span class="muted small">${esc(h.sym)} · ${EX_LABEL[h.mkt]}</span>
+        <span class="pl ${cls(pl)} num">${pct(plp)}</span></div>
+      <div class="h2"><span>${Number(h.qty).toLocaleString("ko-KR", { maximumFractionDigits: 8 })}개 · 평단 ${fmtPrice(h.avg, h.mkt)}</span><span class="r ${cls(pl)} num">${money(pl, h.mkt, true)}</span></div>
+      <div class="h2"><span>현재가 <span class="${cls(st.chg)} num">${fmtPrice(st.price, h.mkt)}</span></span><span class="r num">평가 ${money(value, h.mkt)}</span></div>
+      <div class="chips">${lv.chips}</div>
+      ${lv.note ? `<div class="note lv${lv.level}">${lv.note}</div>` : ""}
+      <div class="hacts"><button class="edit">수정</button><button class="del">삭제</button><button class="chartbtn">차트</button></div>
+    </div>`;
+  }).join("") : `<div class="empty">아래에 거래소·코인·평단·수량을 넣고 추가하세요.<br>노트북 알리미에서 QR로 한 번에 가져올 수도 있어요 (설정).</div>`;
+  $("#hSum").innerHTML = Object.entries(sums).map(([c, x]) => {
+    const pl = x.value - x.cost, plp = x.cost ? (x.value / x.cost - 1) * 100 : 0;
+    return `<div class="sumcard"><div class="lbl">${c === "$" ? "바이낸스 (달러)" : "원화 코인"} 평가 수익</div>
+      <div class="big ${x.ok ? cls(pl) : ""} num">${x.ok ? money(pl, x.mkt, true) : "–"} <span style="font-size:16px">${x.ok ? pct(plp) : ""}</span></div>
+      <div class="row2"><span>매수 <b class="num">${money(x.cost, x.mkt)}</b></span><span>평가 <b class="num">${x.ok ? money(x.value, x.mkt) : "–"}</b></span></div></div>`;
+  }).join("");
+}
+let holdBusy = false;
+async function loadHold() {
+  renderHold();
+  if (!holdings.length || holdBusy) return;
+  holdBusy = true;
+  try { await holdStatus(); } finally { holdBusy = false; }
+}
+function saveHoldings() { store.set("holdings", holdings); }
+function resolveCoin(rows, ex, q) {
+  let t = q.trim().toUpperCase().replace(/^KRW-/, "").replace(/-KRW$/, "");
+  if (!t) return null;
+  if (ex === "binance" && !/USDT$/.test(t)) t += "USDT";
+  const qq = q.trim().replace(/\s/g, "");
+  return rows.find(r => r.sym === t) || rows.find(r => r.name === q.trim()) || rows.find(r => r.name.replace(/\s/g, "").includes(qq));
+}
+async function fillCoinList() {
+  try { const rows = await tickers($("#hEx").value, 60e3); $("#hCoinList").innerHTML = rows.slice(0, 500).map(r => `<option value="${esc(r.sym)}">${esc(r.name)}</option>`).join(""); } catch (_) {}
+}
+$("#hEx").addEventListener("change", fillCoinList);
+$("#hCoin").addEventListener("focus", () => { if (!$("#hCoinList").children.length) fillCoinList(); });
+function resetForm() {
+  H.editing = null; $("#hForm").reset();
+  $("#hFormTitle").textContent = "보유 코인 추가"; $("#hSave").textContent = "추가"; $("#hCancel").hidden = true;
+  $("#hEx").disabled = false; $("#hCoin").disabled = false;
+}
+$("#hCancel").addEventListener("click", resetForm);
+$("#hForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const avg = Number($("#hAvg").value), qty = Number($("#hQty").value), msg = t => { $("#hMsg").textContent = t; };
+  if (!(avg > 0) || !(qty > 0)) return msg("평단과 수량을 0보다 크게 넣어 주세요.");
+  if (H.editing) {
+    const h = holdings.find(x => x.id === H.editing);
+    if (h) { h.avg = avg; h.qty = qty; }
+    saveHoldings(); resetForm(); msg("고쳤어요."); return loadHold();
+  }
+  const ex = $("#hEx").value;
+  msg("찾는 중…");
+  let rows;
+  try { rows = await tickers(ex, 60e3); } catch (err) { return msg(err.message); }
+  const r = resolveCoin(rows, ex, $("#hCoin").value);
+  if (!r) return msg(`${EX_LABEL[ex]}에서 '${$("#hCoin").value}' 코인을 찾지 못했어요.`);
+  if (holdings.some(x => x.mkt === r.mkt && x.sym === r.sym)) return msg(`${r.name}은 이미 있어요. 수정을 눌러 고쳐 주세요.`);
+  holdings.push({ id: `${r.mkt}|${r.sym}|${Date.now()}`, mkt: r.mkt, sym: r.sym, name: r.name, avg, qty });
+  saveHoldings(); resetForm(); msg(`${r.name} 추가했어요.`);
+  loadHold();
+});
+$("#hList").addEventListener("click", e => {
+  const card = e.target.closest(".hcard"); if (!card) return;
+  const h = holdings.find(x => x.id === card.dataset.id); if (!h) return;
+  if (e.target.closest(".del")) {
+    if (confirm(`${h.name} 보유 기록을 지울까요?`)) { holdings = holdings.filter(x => x.id !== h.id); saveHoldings(); renderHold(); }
+  } else if (e.target.closest(".edit")) {
+    H.editing = h.id;
+    $("#hEx").value = h.mkt; $("#hEx").disabled = true; $("#hCoin").value = h.name; $("#hCoin").disabled = true;
+    $("#hAvg").value = h.avg; $("#hQty").value = h.qty;
+    $("#hFormTitle").textContent = `${h.name} 고치기`; $("#hSave").textContent = "저장"; $("#hCancel").hidden = false;
+    $("#hForm").scrollIntoView({ behavior: "smooth", block: "center" });
+  } else if (e.target.closest(".chartbtn")) {
+    C.cur = { mkt: h.mkt, sym: h.sym, name: h.name }; store.set("chartCur", C.cur); show("chart");
+  }
+});
+
+// ---------- 시세 ----------
+const M = { ex: store.get("mEx", "upbit"), sort: store.get("mSort", "turnover"), rows: [] };
+function markSeg(sel, attr, v) { document.querySelectorAll(`${sel} button`).forEach(b => b.classList.toggle("on", b.dataset[attr] === v)); }
+async function loadMarket() {
+  markSeg("#mEx", "ex", M.ex); markSeg("#mSort", "s", M.sort);
+  $("#mStatus").textContent = "불러오는 중…";
+  try {
+    const ex = M.ex, rows = await tickers(ex, 8e3);
+    if (ex !== M.ex) return;
+    M.rows = rows; $("#mErr").textContent = "";
+    $("#mStatus").textContent = `${rows.length}종목 · ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })} 기준`;
+  } catch (e) { $("#mErr").textContent = e.message; $("#mStatus").textContent = ""; }
+  renderMarket();
+}
+function rateHtml(sigs) {
+  const ups = sigs.filter(x => x.dir === "up" && x.score != null);
+  if (!ups.length) return "";
+  const b = ups.reduce((a, x) => x.score / x.scoreMax > a.score / a.scoreMax ? x : a);
+  const r = b.score / b.scoreMax;
+  return `<span class="rate ${b.star ? "strong" : r >= .6 ? "mid" : "weak"}">${b.star ? "★ 강세" : r >= .6 ? "보통" : "약함"} ${b.score}/${b.scoreMax}</span>`;
+}
+function renderMarket() {
+  const q = $("#mFilter").value.trim().toLowerCase().replace(/\s/g, "");
+  const ws = watchSet();
+  const sigMap = new Map();
+  for (const s of (store.get("scan", {}).signals || [])) { const k = s.mkt + "|" + s.sym; if (!sigMap.has(k)) sigMap.set(k, []); sigMap.get(k).push(s); }
+  let rows = M.rows.filter(r => !q || (r.name + r.sym).toLowerCase().includes(q));
+  if (M.sort === "watch") rows = rows.filter(r => ws.has(r.mkt + "|" + r.sym) || holdings.some(h => h.mkt === r.mkt && h.sym === r.sym));
+  rows = rows.slice().sort(M.sort === "chg" ? (a, b) => b.chg - a.chg : (a, b) => b.turnover - a.turnover).slice(0, 300);
+  $("#mList").innerHTML = rows.length ? rows.map(r => {
+    const k = r.mkt + "|" + r.sym, sigs = sigMap.get(k) || [];
+    const badges = sigs.slice(0, 3).map(x => `<span class="sig ${x.dir === "up" ? "u" : "d"}">${x.dir === "up" ? "▲" : "▼"}${x.period} ${x.tf}</span>`).join("");
+    const held = holdings.some(h => h.mkt === r.mkt && h.sym === r.sym);
+    return `<li class="mitem" data-k="${esc(k)}">
+      <div class="nm"><button class="wstar ${ws.has(k) ? "on" : ""}" aria-label="관심">${ws.has(k) ? "★" : "☆"}</button><b>${esc(r.name)}</b><small>${esc(r.sym)}${held ? " · 보유" : ""}</small></div>
+      <div class="px ${cls(r.chg)}">${fmtPrice(r.price, r.mkt)}</div>
+      <div class="ch ${cls(r.chg)}">${pct(r.chg)}</div>
+      <div class="sub">${rateHtml(sigs)}${badges}<span style="margin-left:auto">거래대금 ${fmtTurn(r.turnover, r.mkt)}</span></div>
+    </li>`;
+  }).join("") : `<div class="empty">${M.sort === "watch" ? "관심·보유 코인이 이 거래소에 없어요. ☆를 눌러 넣어 보세요." : "코인이 없어요."}</div>`;
+}
+$("#mEx").addEventListener("click", e => { const b = e.target.closest("button[data-ex]"); if (!b) return; M.ex = b.dataset.ex; store.set("mEx", M.ex); M.rows = []; renderMarket(); loadMarket(); });
+$("#mSort").addEventListener("click", e => { const b = e.target.closest("button[data-s]"); if (!b) return; M.sort = b.dataset.s; store.set("mSort", M.sort); markSeg("#mSort", "s", M.sort); renderMarket(); });
+$("#mFilter").addEventListener("input", renderMarket);
+$("#mList").addEventListener("click", e => {
+  const li = e.target.closest(".mitem"); if (!li) return;
+  const [mkt, sym] = li.dataset.k.split("|");
+  const r = M.rows.find(x => x.mkt === mkt && x.sym === sym);
+  if (e.target.closest(".wstar")) { const on = toggleWatch(mkt, sym, r?.name); toast(on ? `${r?.name || sym} 관심 코인에 넣었어요` : `${r?.name || sym} 관심 코인에서 뺐어요`); renderMarket(); return; }
+  C.cur = { mkt, sym, name: r?.name || sym }; store.set("chartCur", C.cur); show("chart");
+});
+
+// ---------- 신호 스캔 ----------
+let scanDir = store.get("scanDir", "up"), scanning = false;
+async function scan() {
+  if (scanning) return;
+  scanning = true;
+  $("#scanBtn").disabled = true; $("#scanProg").hidden = false; $("#sErr").textContent = "";
+  const tfs = TF_LIST.filter(tf => S.tfs[tf]);
+  const exs = Object.keys(S.scanEx).filter(x => S.scanEx[x]);
+  const errs = {};
+  const fail = (lbl, e) => { errs[lbl] = (errs[lbl] || "") || e.message; };
+  // 대상: 보유 + 관심 + 거래소별 거래대금 상위
+  const items = new Map();
+  const tick = {};
+  for (const ex of new Set([...exs, ...holdings.map(h => h.mkt), ...parseWatch(S.watch).map(w => w.mkt)])) {
+    try { tick[ex] = await tickers(ex, 30e3); } catch (e) { tick[ex] = []; fail(EX_LABEL[ex], e); }
+  }
+  const add = (mkt, sym, name, watch) => {
+    const k = mkt + "|" + sym, t = (tick[mkt] || []).find(x => x.sym === sym);
+    if (!items.has(k)) items.set(k, { mkt, sym, name: t?.name || name || sym, turnover: t?.turnover || 0, watch: false, held: false });
+    const it = items.get(k);
+    if (watch === "w") it.watch = true; if (watch === "h") it.held = true;
+  };
+  holdings.forEach(h => add(h.mkt, h.sym, h.name, "h"));
+  parseWatch(S.watch).forEach(w => add(w.mkt, w.sym, w.name, "w"));
+  for (const ex of exs) (tick[ex] || []).slice().sort((a, b) => b.turnover - a.turnover).slice(0, Number(S.top) || 0).forEach(r => add(r.mkt, r.sym, r.name));
+  const list = [...items.values()];
+  const s = { volMult: Number(S.volMult) || 2, volLookback: 20, includePrelim: true };
+  const found = [];
+  let done = 0;
+  const prog = () => { $("#scanProg i").style.width = `${list.length ? done / list.length * 100 : 100}%`; $("#scanStatus").textContent = `${done}/${list.length}개 확인 중…`; };
+  prog();
+  const job = async it => {
+    try {
+      const dc = await candles(it.mkt, it.sym, "1d");
+      const ctx = { liquid: it.turnover >= LIQ[it.mkt].min, liquidLabel: LIQ[it.mkt].label, dailyAbove: { 200: aboveMa200(dc, false, 200), 448: aboveMa200(dc, false, 448) } };
+      let sigs = [];
+      for (const tf of tfs) {
+        let c;
+        try { c = tf === "1d" ? dc : await candles(it.mkt, it.sym, tf); } catch (e) { fail(`${EX_LABEL[it.mkt]} ${TF_LABEL[tf]}`, e); continue; }
+        // 휴대폰은 열 때만 보니까 최근 하루치 봉(일봉은 3개)에서 일어난 교차를 찾음
+        const recent = tf === "1d" ? 3 : Math.max(2, Math.ceil(1440 / TF_MIN[tf])) + (tf === "5m" ? Number(S.holdBars) : 0);
+        for (const sig of detectCrosses(c, s, false, [200, 448], Math.min(recent, tf === "5m" ? 300 : 30))) {
+          const f = { ...sig, mkt: it.mkt, sym: it.sym, name: it.name, tf, watch: it.watch, held: it.held };
+          if (f.dir === "up") { const sc = scoreUp(f, ctx); f.score = sc.score; f.scoreMax = sc.max; f.checks = sc.checks; f.star = sc.score >= Math.min(Number(S.starMin), sc.max); }
+          sigs.push(f);
+        }
+      }
+      const hb = Number(S.holdBars) || 0;
+      if (hb && sigs.some(f => f.dir === "up")) {
+        let c5 = null;
+        try { c5 = await candles(it.mkt, it.sym, "5m"); } catch (e) { fail(`${EX_LABEL[it.mkt]} 5분봉(돌파 확인)`, e); }
+        sigs = confirmUps(sigs, c5, false, hb);
+      }
+      found.push(...sigs);
+    } catch (e) { fail(`${EX_LABEL[it.mkt]} 일봉`, e); }
+    done++; prog();
+  };
+  // 거래소마다 동시에, 같은 거래소 안에서는 2개씩
+  const byEx = {};
+  list.forEach(it => (byEx[it.mkt] = byEx[it.mkt] || []).push(it));
+  await Promise.all(Object.values(byEx).map(async arr => {
+    let i = 0;
+    await Promise.all([0, 1].map(async () => { while (i < arr.length) await job(arr[i++]); }));
+  }));
+  found.sort((a, b) => (b.held ? 1 : 0) - (a.held ? 1 : 0) || (b.watch ? 1 : 0) - (a.watch ? 1 : 0) || (b.star ? 1 : 0) - (a.star ? 1 : 0) || b.t - a.t || (b.score || 0) - (a.score || 0));
+  store.set("scan", { at: Date.now(), count: list.length, signals: found.map(f => ({ ...f, checks: f.checks })) });
+  const eTxt = Object.entries(errs).map(([k, v]) => `${k}: ${v}`).join(" · ");
+  $("#sErr").textContent = eTxt ? `일부 실패 — ${eTxt}` : "";
+  scanning = false; $("#scanBtn").disabled = false; $("#scanProg").hidden = true;
+  renderSignals();
+}
+function renderSignals() {
+  markSeg("#sDir", "d", scanDir);
+  const sc = store.get("scan", null);
+  if (!sc) { $("#scanStatus").textContent = "아직 스캔하지 않았어요. 보유·관심 코인과 거래대금 상위 코인을 확인해요 (설정에서 범위 조절)."; $("#sList").innerHTML = ""; return; }
+  if (!scanning) {
+    const mins = Math.round((Date.now() - sc.at) / 60000);
+    $("#scanStatus").textContent = `${mins < 1 ? "방금" : mins < 60 ? `${mins}분 전` : `${Math.round(mins / 60)}시간 전`} 스캔 · ${sc.count}개 코인 · 최근 하루 안의 돌파·이탈`;
+  }
+  const list = sc.signals.filter(x => x.dir === scanDir);
+  $("#sList").innerHTML = list.length ? list.map(x => `
+    <div class="scard ${x.dir === "up" ? "su" : "sd"} ${x.star ? "star" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}">
+      <div class="s1">${x.star ? '<b style="color:var(--star)">★</b>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.sym)} · ${EX_LABEL[x.mkt]}</span>
+        ${x.score != null ? `<span class="rate ${x.star ? "strong" : "weak"}">${x.score}/${x.scoreMax}</span>` : ""}
+        <span class="p num">${fmtPrice(x.price, x.mkt)}</span></div>
+      <div class="s2">
+        ${x.held ? '<span class="pill" style="background:#7048e8;color:#fff">보유</span>' : x.watch ? '<span class="pill" style="color:#7048e8">관심</span>' : ""}
+        <span class="pill">${x.period}선 ${x.dir === "up" ? "상향 돌파" : "하향 이탈"}</span>
+        ${x.allSide ? `<span class="pill">${x.dir === "up" ? "200·448 모두 위" : "200·448 모두 아래"}</span>` : ""}
+        <span class="pill ${x.status === "confirmed" ? "conf" : ""}">${TF_LABEL[x.tf]} ${x.status === "confirmed" ? "확정" : "진행중"}</span>
+        <span class="pill">거래량 ${x.volRatio.toFixed(1)}배</span>
+        ${x.hold5m != null ? `<span class="pill hold">5분봉 ${x.hold5m}개 유지</span>` : ""}
+        <span>RSI ${x.rsi.toFixed(0)}</span><span>· ${kst(x.t, x.tf)}봉</span>
+      </div>
+      ${x.checks ? `<div class="checks">${x.checks.map(c => `<span class="${c.ok ? "" : "no"}">${c.ok ? "✓" : "✗"} ${esc(c.label)}</span>`).join("")}</div>` : ""}
+    </div>`).join("") : `<div class="empty">${scanDir === "up" ? "상향 돌파" : "하향 이탈"} 신호가 없어요.</div>`;
+}
+$("#scanBtn").addEventListener("click", scan);
+$("#sDir").addEventListener("click", e => { const b = e.target.closest("button[data-d]"); if (!b) return; scanDir = b.dataset.d; store.set("scanDir", scanDir); renderSignals(); });
+$("#sList").addEventListener("click", e => {
+  const c = e.target.closest(".scard"); if (!c) return;
+  const [mkt, sym] = c.dataset.k.split("|");
+  C.cur = { mkt, sym, name: c.dataset.n }; store.set("chartCur", C.cur); show("chart");
+});
+
+// ---------- 차트 ----------
+const C = { cur: store.get("chartCur", { mkt: "upbit", sym: "BTC", name: "비트코인" }), tf: store.get("chartTf", "1h"), chart: null, se: null, req: 0 };
+const BTC_SYM = { upbit: "BTC", coin: "BTC", binance: "BTCUSDT" };
+const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+function ensureChart() {
+  if (C.chart) return;
+  const up = css("--up"), down = css("--down");
+  C.chart = LightweightCharts.createChart($("#chart"), {
+    autoSize: true,
+    layout: { background: { color: css("--bg") }, textColor: css("--muted"), fontFamily: "system-ui, sans-serif" },
+    grid: { vertLines: { color: css("--line") }, horzLines: { color: css("--line") } },
+    rightPriceScale: { borderColor: css("--line") }, timeScale: { borderColor: css("--line"), timeVisible: true, secondsVisible: false },
+    crosshair: { mode: 0 }, handleScale: { axisPressedMouseMove: true }, handleScroll: { vertTouchDrag: false }
+  });
+  C.se = {
+    candle: C.chart.addCandlestickSeries({ upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down }),
+    m200: C.chart.addLineSeries({ color: "#e8a200", lineWidth: 2, priceLineVisible: false, crosshairMarkerVisible: false, title: "200" }),
+    m448: C.chart.addLineSeries({ color: "#2f9e44", lineWidth: 2, priceLineVisible: false, crosshairMarkerVisible: false, title: "448" }),
+    vol: C.chart.addHistogramSeries({ priceScaleId: "vol", priceFormat: { type: "volume" }, lastValueVisible: false, priceLineVisible: false })
+  };
+  C.chart.priceScale("vol").applyOptions({ scaleMargins: { top: .82, bottom: 0 } });
+  C.chart.priceScale("right").applyOptions({ scaleMargins: { top: .06, bottom: .22 } });
+}
+async function loadChart(keep = false) {
+  markSeg("#cTf", "tf", C.tf); markSeg("#cEx", "ex", C.cur.mkt);
+  const cur = C.cur, tf = C.tf, req = ++C.req;
+  $("#cName").textContent = cur.name; $("#cSym").textContent = `${cur.sym} · ${EX_LABEL[cur.mkt]} · ${TF_LABEL[tf]}`;
+  if (!keep) $("#cMsg").textContent = "불러오는 중…";
+  if (typeof LightweightCharts === "undefined") { $("#cMsg").textContent = "차트 도구를 불러오지 못했어요 (인터넷 확인)"; return; }
+  let c;
+  try { c = await candles(cur.mkt, cur.sym, tf, 700); } catch (e) { if (req === C.req) $("#cMsg").textContent = e.message; return; }
+  if (req !== C.req || !c.length) return;
+  ensureChart();
+  const close = c.map(x => x.c), from = Math.max(0, c.length - 500);
+  const up = css("--up"), down = css("--down");
+  const cd = [], v = [], m2 = [], m4 = [];
+  for (let i = from; i < c.length; i++) {
+    const time = Math.floor(c[i].t / 1000) + 9 * 3600;
+    cd.push({ time, open: c[i].o, high: c[i].h, low: c[i].l, close: c[i].c });
+    v.push({ time, value: c[i].v, color: (c[i].c >= c[i].o ? up : down) + "66" });
+    if (i >= 199) m2.push({ time, value: sma(close, 200, i) });
+    if (i >= 447) m4.push({ time, value: sma(close, 448, i) });
+  }
+  const p = close[close.length - 1], prec = p < 1 ? 5 : p < 10 ? 4 : p < 1000 ? 2 : 0;
+  const pf = { type: "price", precision: prec, minMove: 1 / 10 ** prec };
+  [C.se.candle, C.se.m200, C.se.m448].forEach(s => s.applyOptions({ priceFormat: pf }));
+  const range = keep ? C.chart.timeScale().getVisibleLogicalRange() : null;
+  C.se.candle.setData(cd); C.se.vol.setData(v); C.se.m200.setData(m2); C.se.m448.setData(m4);
+  if (range) C.chart.timeScale().setVisibleLogicalRange(range);
+  else C.chart.timeScale().setVisibleLogicalRange({ from: Math.max(0, cd.length - 90), to: cd.length + 2 });
+  $("#cPx").textContent = fmtPrice(p, cur.mkt);
+  const g2 = m2.length ? (p / m2[m2.length - 1].value - 1) * 100 : null, g4 = m4.length ? (p / m4[m4.length - 1].value - 1) * 100 : null;
+  $("#cGap").innerHTML = [g2 != null ? `200선 <b class="${cls(g2)}">${pct(g2)}</b>` : "", g4 != null ? `448선 <b class="${cls(g4)}">${pct(g4)}</b>` : ""].filter(Boolean).join(" · ");
+  $("#cMsg").textContent = c.length < 201 ? `봉 ${c.length}개 — 200선은 201개부터` : c.length < 449 ? `봉 ${c.length}개 — 448선은 449개부터` : `${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 갱신`;
+}
+$("#cTf").addEventListener("click", e => { const b = e.target.closest("button[data-tf]"); if (!b) return; C.tf = b.dataset.tf; store.set("chartTf", C.tf); loadChart(); });
+$("#cEx").addEventListener("click", e => {
+  const b = e.target.closest("button[data-ex]"); if (!b) return;
+  const ex = b.dataset.ex;
+  // 같은 코인을 다른 거래소에서 (바이낸스는 USDT)
+  const base = C.cur.mkt === "binance" ? C.cur.sym.replace(/USDT$/, "") : C.cur.sym;
+  C.cur = { mkt: ex, sym: ex === "binance" ? base + "USDT" : base, name: C.cur.name };
+  store.set("chartCur", C.cur); loadChart();
+});
+
+// ---------- 설정 ----------
+function fillSettings() {
+  $("#sWatch").value = S.watch || "";
+  document.querySelectorAll("[data-sx]").forEach(c => { c.checked = !!S.scanEx[c.dataset.sx]; });
+  document.querySelectorAll("[data-stf]").forEach(c => { c.checked = !!S.tfs[c.dataset.stf]; });
+  document.querySelectorAll("[data-htf]").forEach(c => { c.checked = !!S.holdTfs[c.dataset.htf]; });
+  $("#sTop").value = String(S.top); $("#sVol").value = String(S.volMult); $("#sStar").value = String(S.starMin); $("#sHold").value = String(S.holdBars);
+}
+$("#sSave").addEventListener("click", () => {
+  S.watch = $("#sWatch").value;
+  S.scanEx = Object.fromEntries([...document.querySelectorAll("[data-sx]")].map(c => [c.dataset.sx, c.checked]));
+  S.tfs = Object.fromEntries([...document.querySelectorAll("[data-stf]")].map(c => [c.dataset.stf, c.checked]));
+  S.holdTfs = Object.fromEntries([...document.querySelectorAll("[data-htf]")].map(c => [c.dataset.htf, c.checked]));
+  if (!Object.values(S.tfs).some(Boolean)) S.tfs["1h"] = true;
+  S.top = Number($("#sTop").value); S.volMult = Number($("#sVol").value); S.starMin = Number($("#sStar").value); S.holdBars = Number($("#sHold").value);
+  store.set("settings", S);
+  for (const h of holdings) if (H.status[h.id]) H.status[h.id].lines = {};
+  toast("저장했어요");
+});
+$("#resetBtn").addEventListener("click", () => {
+  if (!confirm("보유·관심 코인, 설정, 스캔 결과를 이 휴대폰에서 모두 지울까요?")) return;
+  try { Object.keys(localStorage).filter(k => k.startsWith("cm.")).forEach(k => localStorage.removeItem(k)); } catch (_) {}
+  location.reload();
+});
+
+// ---------- 노트북에서 가져오기 (QR 링크 #import=…) ----------
+function decodeImport(code) {
+  const b64 = code.trim().replace(/^.*#?import=/, "").replace(/-/g, "+").replace(/_/g, "/");
+  const bin = atob(b64 + "===".slice((b64.length + 3) % 4));
+  const json = new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0)));
+  const d = JSON.parse(json);
+  if (!d || d.v !== 1) throw new Error("알 수 없는 코드");
+  return d;
+}
+function applyImport(d) {
+  const hs = (d.h || []).filter(x => ["upbit", "coin", "binance"].includes(x[0]) && x[3] > 0 && x[4] > 0)
+    .map((x, i) => ({ id: `${x[0]}|${x[1]}|${Date.now() + i}`, mkt: x[0], sym: x[1], name: x[2] || x[1], avg: +x[3], qty: +x[4] }));
+  const ws = (d.w || []).filter(x => ["upbit", "coin", "binance"].includes(x[0]));
+  const ask = `노트북에서 보낸 보유 코인 ${hs.length}개${ws.length ? `, 관심 코인 ${ws.length}개` : ""}를 가져올까요?\n(이 휴대폰의 보유 코인 목록은 이걸로 바뀌어요)`;
+  if (!confirm(ask)) return false;
+  holdings = hs; saveHoldings(); H.status = {};
+  if (ws.length) {
+    const cur = parseWatch(S.watch), have = new Set(cur.map(x => x.mkt + "|" + x.sym));
+    const add = ws.filter(x => !have.has(x[0] + "|" + x[1])).map(x => `${watchCode(x[0], x[1])} ${String(x[2] || "").replace(/\s+/g, "")}`.trim());
+    S.watch = [...String(S.watch || "").split("\n").filter(l => l.trim()), ...add].join("\n");
+    store.set("settings", S);
+  }
+  toast(`보유 코인 ${hs.length}개를 가져왔어요`);
+  return true;
+}
+$("#iBtn").addEventListener("click", () => {
+  try { if (applyImport(decodeImport($("#iCode").value))) { $("#iCode").value = ""; show("hold"); } }
+  catch (e) { toast("코드를 읽지 못했어요. 다시 복사해 주세요."); }
+});
+
+// ---------- 시작 ----------
+(function start() {
+  if (location.hash.startsWith("#import=")) {
+    const code = location.hash.slice(1);
+    history.replaceState(null, "", location.pathname + location.search); // 주소창에서 지움
+    try { if (applyImport(decodeImport(code))) page = "hold"; } catch (_) { toast("가져오기 코드를 읽지 못했어요"); }
+  }
+  show(page);
+  loadBtc();
+  // 화면이 켜져 있을 때만 새로고침
+  setInterval(() => {
+    if (document.hidden) return;
+    loadBtc();
+    if (page === "market") loadMarket();
+    if (page === "hold") loadHold();
+    if (page === "chart") loadChart(true);
+  }, 20e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { loadBtc(); if (page !== "sig" && page !== "set") show(page); } });
+})();
+</script>
+</body>
+</html>
