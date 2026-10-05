@@ -137,6 +137,21 @@ nav.bottom button.on { color: var(--fg); font-weight: 700; }
 .rbnote { margin: 12px 14px 0; padding: 10px 12px; border-radius: 12px; background: var(--rb-soft); border: 1px solid var(--rb); color: var(--rb); font-size: 14px; }
 .rbnote[hidden] { display: none; }
 
+.ver { font-size: 11px; font-weight: 400; color: var(--muted); }
+.scard { position: relative; }
+.sdel { position: absolute; right: 8px; bottom: 8px; padding: 2px 9px; font-size: 13px; background: transparent; color: var(--muted); border: 1px solid var(--line); }
+#sClear { margin: 0 14px 6px; padding: 5px 10px; font-size: 12.5px; }
+.scard .s1 .p { margin-right: 0; }
+.dlist .drow { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.drow .d1 { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.drow .d1 b { font-size: 15px; }
+.drow .d2 { font-size: 13px; margin-top: 2px; }
+.drow.new { background: var(--up-soft); }
+.dlabel { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 5px; color: #fff; background: #495057; }
+.dlabel.t-contract { background: #1971c2; } .dlabel.t-buyback, .dlabel.t-burn { background: #2f9e44; }
+.dlabel.t-bonus { background: #e8590c; } .dlabel.t-dividend { background: #9c36b5; }
+.dlabel.t-clinical { background: #c2255c; } .dlabel.t-facility, .dlabel.t-patent, .dlabel.t-tech { background: #0c8599; }
+
 /* 차트 */
 .chhead { padding: 10px 14px 4px; }
 .chhead .nm { font-size: 18px; font-weight: 800; }
@@ -163,7 +178,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미</h1>
+    <h1>코인 이평 알리미 <small class="ver">v4</small></h1>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
 </header>
@@ -177,7 +192,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
   <form class="form" id="hForm" autocomplete="off">
     <b id="hFormTitle">보유 코인 추가</b>
     <div class="two">
-      <select id="hEx"><option value="upbit">업비트</option><option value="coin">빗썸</option><option value="binance">바이낸스</option></select>
+      <select id="hEx"><option value="coin">빗썸</option><option value="binance">바이낸스</option></select>
       <input id="hCoin" list="hCoinList" placeholder="코인 (BTC, 비트코인)">
     </div>
     <datalist id="hCoinList"></datalist>
@@ -194,7 +209,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <!-- 시세 -->
 <main class="page" id="p-market" hidden>
   <div class="bar">
-    <div class="seg" id="mEx"><button data-ex="upbit">업비트</button><button data-ex="coin">빗썸</button><button data-ex="binance">바이낸스</button></div>
+    <div class="seg" id="mEx"><button data-ex="coin">빗썸</button><button data-ex="binance">바이낸스</button></div>
     <div class="seg" id="mSort"><button data-s="turnover">거래대금</button><button data-s="chg">등락률</button><button data-s="watch">관심</button></div>
     <input id="mFilter" placeholder="코인 이름·기호로 찾기" type="search">
   </div>
@@ -210,6 +225,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
       <button class="primary" id="scanBtn" style="flex:1">지금 스캔</button>
       <div class="seg" id="sDir"><button data-d="up">▲ 상향</button><button data-d="down">▼ 하향</button></div>
     </div>
+    <div style="display:flex;justify-content:flex-end"><button id="sClear" class="small">보이는 신호 지우기</button></div>
     <div class="prog" hidden id="scanProg"><i></i></div>
     <div class="muted small" id="scanStatus"></div>
   </div>
@@ -226,23 +242,41 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
   </div>
   <div class="bar" style="padding-top:4px">
     <div class="seg" id="cTf"><button data-tf="5m">5분</button><button data-tf="1h">1시간</button><button data-tf="4h">4시간</button><button data-tf="1d">일봉</button></div>
-    <div class="seg" id="cEx"><button data-ex="upbit">업</button><button data-ex="coin">빗</button><button data-ex="binance">바</button></div>
+    <div class="seg" id="cEx"><button data-ex="coin">빗썸</button><button data-ex="binance">바이낸스</button></div>
   </div>
   <div id="chart"></div>
   <div class="legend"><span><i style="background:#e8a200"></i>200선</span><span><i style="background:#2f9e44"></i>448선</span><span id="cMsg"></span><span style="margin-left:auto">차트: <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts</a></span></div>
+</main>
+
+<!-- 공시 -->
+<main class="page" id="p-dart" hidden>
+  <div class="bar">
+    <button class="primary" id="dRefresh">새로 불러오기</button>
+    <div class="seg" id="dFilter"></div>
+  </div>
+  <div class="muted small" style="padding:0 14px 6px" id="dStatus"></div>
+  <div class="err" id="dErr"></div>
+  <div id="dList" class="dlist"></div>
+  <p class="help" style="margin:10px 16px">코스피·코스닥 공시 중 제목으로 호재로 자주 분류되는 유형만 골라요 (공급계약, 자사주 취득·소각, 무상증자, 배당, 신규 시설투자, 특허, 기술이전, 임상·허가 승인). 정정·해지·자회사 공시는 빼요. 예측·투자 권유가 아니에요. 줄을 누르면 DART 원문이 열려요.</p>
 </main>
 
 <!-- 설정 -->
 <main class="page" id="p-set" hidden>
   <div class="set">
     <section>
+      <h3>중계 주소 (공시)</h3>
+      <input id="sRelay" placeholder="https://script.google.com/macros/s/…/exec" spellcheck="false" autocomplete="off">
+      <div class="help">전자공시(OpenDART)는 휴대폰 웹페이지에서 직접 불러오지 못하게 막혀 있어요. 구글 Apps Script로 만든 중계 주소를 넣으면 <b>공시</b> 탭을 쓸 수 있어요.</div>
+      <button id="sRelayTest">중계 확인</button> <span id="sRelayMsg" class="help"></span>
+    </section>
+    <section>
       <h3>관심 코인</h3>
-      <textarea id="sWatch" rows="4" placeholder="한 줄에 하나: KRW-BTC (업비트) · BTC-KRW (빗썸) · BTCUSDT (바이낸스) · 그냥 SOL 이라고 쓰면 업비트"></textarea>
+      <textarea id="sWatch" rows="4" placeholder="한 줄에 하나: BTC-KRW 또는 그냥 SOL (빗썸) · BTCUSDT (바이낸스)"></textarea>
       <div class="help">관심 코인과 보유 코인은 스캔할 때 항상 확인해요. 시세 목록의 ☆를 눌러도 들어가요.</div>
     </section>
     <section>
       <h3>스캔 범위</h3>
-      <div class="checkrow"><label><input type="checkbox" data-sx="upbit"> 업비트</label><label><input type="checkbox" data-sx="coin"> 빗썸</label><label><input type="checkbox" data-sx="binance"> 바이낸스</label></div>
+      <div class="checkrow"><label><input type="checkbox" data-sx="coin"> 빗썸</label><label><input type="checkbox" data-sx="binance"> 바이낸스</label></div>
       <label class="help">거래대금 상위 몇 개까지 볼까요 (거래소마다)
         <select id="sTop"><option value="0">관심·보유만</option><option value="10">상위 10개</option><option value="20">상위 20개</option><option value="40">상위 40개 (오래 걸림)</option></select></label>
       <div class="help">볼 봉</div>
@@ -270,7 +304,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
       <button id="resetBtn">모두 지우기</button>
     </section>
   </div>
-  <footer class="disc">시세: 업비트·빗썸·바이낸스 공개 시세 · ★·조건 점수는 체크리스트이며 예측·투자 권유가 아니에요</footer>
+  <footer class="disc">시세: 빗썸·바이낸스 공개 시세 · ★·조건 점수는 체크리스트이며 예측·투자 권유가 아니에요</footer>
 </main>
 
 <nav class="bottom">
@@ -278,12 +312,17 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
   <button data-p="market"><i>📊</i>시세</button>
   <button data-p="sig"><i>⚡</i>신호</button>
   <button data-p="chart"><i>📈</i>차트</button>
+  <button data-p="dart"><i>📢</i>공시</button>
   <button data-p="set"><i>⚙️</i>설정</button>
 </nav>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
-  onerror="var s=document.createElement('script');s.src='https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js';document.head.appendChild(s)"></script>
+<script>
+// 차트 도구: 같은 저장소의 파일 → 안 되면 jsdelivr → unpkg
+window.__lwcSrc = ["lightweight-charts.js", "https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js", "https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"];
+window.__lwcLoad = function (i) { if (i >= __lwcSrc.length || window.LightweightCharts) return; var s = document.createElement("script"); s.src = __lwcSrc[i]; s.onerror = function () { __lwcLoad(i + 1); }; document.head.appendChild(s); };
+__lwcLoad(0);
+</script>
 <script>
 // 지표 계산 (배열은 과거 → 최신 순)
 
@@ -548,6 +587,24 @@ function dailyBreakInfo(dc) {
   return { ...best, fromHigh: +fromHigh.toFixed(1) };
 }
 
+const DART_TYPES = [
+  { k: "contract", label: "공급계약", re: /단일판매.?공급계약체결/ },
+  { k: "buyback", label: "자사주 취득", re: /자기주식취득(신탁계약체결)?결정/ },
+  { k: "burn", label: "주식 소각", re: /주식소각결정/ },
+  { k: "bonus", label: "무상증자", re: /무상증자결정/ },
+  { k: "dividend", label: "배당", re: /현금.?현물배당결정|분기배당|중간배당/ },
+  { k: "facility", label: "신규 시설투자", re: /신규시설투자/ },
+  { k: "patent", label: "특허 취득", re: /특허권취득/ },
+  { k: "tech", label: "기술이전", re: /기술이전|기술도입.?이전/ },
+  { k: "clinical", label: "임상·허가 승인", re: /(임상|품목허가|허가).*(승인|획득)|(승인|획득).*(임상|품목허가)/ }
+];
+const DART_SKIP = /정정|해지|철회|취소|연기|변경|자회사의/;   // 정정·해지·자회사 공시 등은 뺌
+function dartClassify(nm) {
+  const t = String(nm || "").replace(/\s/g, "");
+  if (DART_SKIP.test(t)) return null;
+  return DART_TYPES.find(x => x.re.test(t)) || null;
+}
+
 </script>
 <script>
 "use strict";
@@ -565,16 +622,32 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem("cm." + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
   set(k, v) { try { localStorage.setItem("cm." + k, JSON.stringify(v)); } catch (_) {} }
 };
-const DEF = { scanEx: { upbit: true, coin: false, binance: false }, top: 20, tfs: { "5m": false, "1h": true, "4h": true, "1d": true },
+const DEF = { relay: "", scanEx: { coin: true, binance: false }, top: 20, tfs: { "5m": false, "1h": true, "4h": true, "1d": true },
   volMult: 2, starMin: 7, holdBars: 3, holdTfs: { "5m": false, "1h": true, "4h": true, "1d": true }, watch: "" };
 let S = { ...DEF, ...store.get("settings", {}) };
+// v3: 중계가 없으면 업비트 스캔 → 빗썸으로 (업비트는 휴대폰 웹에서 막힘)
+if (!S._v3) { if (!S.relay && S.scanEx.upbit) S.scanEx = { ...S.scanEx, upbit: false, coin: true }; S._v3 = true; store.set("settings", S); }
 let holdings = store.get("holdings", []);
+if (!S._v4) {
+  holdings = holdings.filter(h => h.mkt !== "upbit"); store.set("holdings", holdings);
+  S.watch = String(S.watch || "").split("\n").filter(l => !/^\s*KRW-/i.test(l)).join("\n");
+  S.scanEx = { coin: true, binance: !!S.scanEx?.binance };
+  S._v4 = true; store.set("settings", S);
+  if (store.get("mEx", "coin") === "upbit") store.set("mEx", "coin");
+  const cc = store.get("chartCur", null); if (cc && cc.mkt === "upbit") store.set("chartCur", { mkt: "coin", sym: "BTC", name: "비트코인" });
+  const sc = store.get("scan", null); if (sc) { sc.signals = sc.signals.filter(x => x.mkt !== "upbit"); store.set("scan", sc); }
+}
 
 function toast(t) { const el = $("#toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, 2600); }
 
 // ---------- 시세 가져오기 ----------
 const HOST = { upbit: "https://api.upbit.com/v1", coin: "https://api.bithumb.com", binance: ["https://api.binance.com", "https://data-api.binance.vision"] };
-const gap = { upbit: 130, coin: 130 }; const nextAt = { upbit: 0, coin: 0 };
+const gap = { upbit: 250, coin: 130 }; const nextAt = { upbit: 0, coin: 0 };
+// 업비트는 웹페이지에서 직접 시세·봉을 못 받게 막혀 있어서, 설정에 중계(Apps Script) 주소가 있으면 그쪽으로 받음
+const relayUrl = () => String(S.relay || "").trim();
+// 데이터를 실제로 받을 거래소: 중계가 없으면 업비트 코인은 빗썸 시세로 대신
+const src = mkt => mkt; // 휴대폰은 빗썸·바이낸스만 (업비트는 웹에서 막혀 있어 뺌)
+const EXS = ["coin", "binance"];
 async function getJSON(url) {
   const r = await fetch(url, { cache: "no-store" });
   if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
@@ -586,7 +659,15 @@ async function paced(ex, url) {
     const now = Date.now(), wait = Math.max(0, nextAt[ex] - now);
     nextAt[ex] = Math.max(now, nextAt[ex]) + gap[ex];
     await sleep(wait);
-    try { return await getJSON(url); }
+    try {
+      if (ex === "upbit" && relayUrl()) {
+        const j = await getJSON(`${relayUrl()}?t=upbit&p=${encodeURIComponent(url.slice(HOST.upbit.length))}`);
+        if (j && j.error) { const e = new Error("중계: " + j.error); if (/429|Too Many/i.test(j.error)) e.status = 429; throw e; }
+        if (j && j.name === "TOO_MANY_REQ") { const e = new Error("too many"); e.status = 429; throw e; }
+        return j;
+      }
+      return await getJSON(url);
+    }
     catch (e) { if (e.status === 429) { await sleep(1000 * (a + 1)); continue; } throw netErr(ex, e); }
   }
   throw new Error(`${EX_LABEL[ex]} 요청이 너무 많아요. 잠시 뒤 다시 해 주세요.`);
@@ -597,6 +678,7 @@ async function binanceGet(path) {
   throw netErr("binance", last);
 }
 function netErr(ex, e) {
+  if (e instanceof TypeError && ex === "upbit" && !relayUrl()) return new Error("업비트는 휴대폰 웹페이지에서 시세를 막아 둬서 직접 못 받아요. 설정 → 중계 주소를 넣거나 빗썸을 써 주세요");
   if (e instanceof TypeError) return new Error(`${EX_LABEL[ex]}에 연결하지 못했어요 (인터넷 연결 또는 거래소 차단)`);
   return e;
 }
@@ -715,10 +797,10 @@ function parseWatch(text) {
     if (!tok) continue;
     const up = tok.toUpperCase();
     let m, it = null;
-    if ((m = up.match(/^KRW-([A-Z0-9]+)$/))) it = { mkt: "upbit", sym: m[1] };
+    if ((m = up.match(/^KRW-([A-Z0-9]+)$/))) it = null; // 업비트 표기는 무시
     else if ((m = up.match(/^([A-Z0-9]+)-KRW$/))) it = { mkt: "coin", sym: m[1] };
     else if (/^[A-Z0-9]{2,}USDT$/.test(up)) it = { mkt: "binance", sym: up };
-    else if (/^[A-Z0-9]{2,10}$/.test(up)) it = { mkt: "upbit", sym: up };
+    else if (/^[A-Z0-9]{2,10}$/.test(up)) it = { mkt: "coin", sym: up };  // 기호만 쓰면 빗썸
     if (!it) continue;
     const k = it.mkt + "|" + it.sym;
     if (seen.has(k)) continue;
@@ -751,6 +833,7 @@ function show(p) {
   if (p === "sig") renderSignals();
   if (p === "chart") loadChart();
   if (p === "set") fillSettings();
+  if (p === "dart") loadDartPage();
   window.scrollTo(0, 0);
 }
 document.querySelector("nav.bottom").addEventListener("click", e => { const b = e.target.closest("button[data-p]"); if (b) show(b.dataset.p); });
@@ -758,25 +841,26 @@ document.querySelector("nav.bottom").addEventListener("click", e => { const b = 
 // ---------- BTC 칩 ----------
 async function loadBtc() {
   try {
-    const rows = await tickers("upbit", 8e3);
+    const rows = await tickers("coin", 8e3);
     const b = rows.find(r => r.sym === "BTC");
-    if (b) $("#btcPx").innerHTML = `${fmtPrice(b.price, "upbit")} <span class="${cls(b.chg)}">${pct(b.chg)}</span>`; // 업비트 9시 대비
+    if (b) $("#btcPx").innerHTML = `${fmtPrice(b.price, "coin")} <span class="${cls(b.chg)}">${pct(b.chg)}</span>`; // 빗썸 0시 대비
   } catch (_) { $("#btcPx").textContent = "–"; }
 }
-$("#btcChip").addEventListener("click", () => { C.cur = { mkt: "upbit", sym: "BTC", name: "비트코인" }; store.set("chartCur", C.cur); show("chart"); });
+$("#btcChip").addEventListener("click", () => { C.cur = { mkt: "coin", sym: "BTC", name: "비트코인" }; store.set("chartCur", C.cur); show("chart"); });
 
 // ---------- 보유 코인 ----------
 const H = { status: {}, editing: null };
 async function holdStatus() {
   const tfs = TF_LIST.filter(tf => S.holdTfs[tf]);
-  const exs = [...new Set(holdings.map(h => h.mkt))];
+  const exs = [...new Set(holdings.map(h => src(h.mkt)))];
   const ticks = {};
   const errs = [];
   await Promise.all(exs.map(async ex => { try { ticks[ex] = await tickers(ex); } catch (e) { ticks[ex] = []; errs.push(e.message); } }));
   for (const h of holdings) {
-    const t = ticks[h.mkt].find(x => x.sym === h.sym);
+    const t = (ticks[src(h.mkt)] || []).find(x => x.sym === h.sym);
     const st = H.status[h.id] || { lines: {} };
     st.price = t?.price ?? st.price; st.chg = t?.chg ?? st.chg;
+    st.alt = src(h.mkt) !== h.mkt ? EX_LABEL[src(h.mkt)] : "";
     H.status[h.id] = st;
   }
   renderHold();
@@ -785,7 +869,7 @@ async function holdStatus() {
     const st = H.status[h.id];
     for (const tf of tfs) {
       try {
-        const c = await candles(h.mkt, h.sym, tf);
+        const c = await candles(src(h.mkt), h.sym, tf);
         const close = c.map(x => x.c), i = close.length - 1, p = st.price ?? close[i];
         if (st.price == null) st.price = close[i];
         const m2 = i >= 199 ? sma(close, 200, i) : null, m4 = i >= 447 ? sma(close, 448, i) : null;
@@ -824,7 +908,8 @@ function lineView(st, tfs) {
 }
 function renderRbNote() {
   const sc = store.get("scan", null);
-  const n = sc ? new Set(sc.signals.filter(x => x.dir === "up" && x.rebreak).map(x => x.mkt + "|" + x.sym)).size : 0;
+  const gone = dismissed();
+  const n = sc ? new Set(sc.signals.filter(x => x.dir === "up" && x.rebreak && !gone.has(sid(x))).map(x => x.mkt + "|" + x.sym)).size : 0;
   $("#rbNote").hidden = !n;
   if (n) $("#rbNote").innerHTML = `🔥 재돌파 신호 <b>${n}개</b> — 신호 탭에서 보기`;
 }
@@ -844,7 +929,7 @@ function renderHold() {
       <div class="h1"><b>${esc(h.name)}</b><span class="muted small">${esc(h.sym)} · ${EX_LABEL[h.mkt]}</span>
         <span class="pl ${cls(pl)} num">${pct(plp)}</span></div>
       <div class="h2"><span>${Number(h.qty).toLocaleString("ko-KR", { maximumFractionDigits: 8 })}개 · 평단 ${fmtPrice(h.avg, h.mkt)}</span><span class="r ${cls(pl)} num">${money(pl, h.mkt, true)}</span></div>
-      <div class="h2"><span>현재가 <span class="${cls(st.chg)} num">${fmtPrice(st.price, h.mkt)}</span>${st.chg != null ? ` <span class="${cls(st.chg)} small">${pct(st.chg)} ${CHG_BASIS[h.mkt]}</span>` : ""}</span><span class="r num">평가 ${money(value, h.mkt)}</span></div>
+      <div class="h2"><span>현재가 <span class="${cls(st.chg)} num">${fmtPrice(st.price, h.mkt)}</span>${st.chg != null ? ` <span class="${cls(st.chg)} small">${pct(st.chg)} ${CHG_BASIS[src(h.mkt)]}</span>` : ""}${st.alt ? ` <span class="muted small">(${st.alt} 시세)</span>` : ""}</span><span class="r num">평가 ${money(value, h.mkt)}</span></div>
       <div class="chips">${lv.chips}</div>
       ${lv.note ? `<div class="note lv${lv.level}">${lv.note}</div>` : ""}
       <div class="hacts"><button class="edit">수정</button><button class="del">삭제</button><button class="chartbtn">차트</button></div>
@@ -921,7 +1006,7 @@ $("#hList").addEventListener("click", e => {
 });
 
 // ---------- 시세 ----------
-const M = { ex: store.get("mEx", "upbit"), sort: store.get("mSort", "turnover"), rows: [] };
+const M = { ex: store.get("mEx", "coin"), sort: store.get("mSort", "turnover"), rows: [] };
 function markSeg(sel, attr, v) { document.querySelectorAll(`${sel} button`).forEach(b => b.classList.toggle("on", b.dataset[attr] === v)); }
 async function loadMarket() {
   markSeg("#mEx", "ex", M.ex); markSeg("#mSort", "s", M.sort);
@@ -930,7 +1015,7 @@ async function loadMarket() {
     const ex = M.ex, rows = await tickers(ex, 8e3);
     if (ex !== M.ex) return;
     M.rows = rows; $("#mErr").textContent = "";
-    $("#mStatus").textContent = `${rows.length}종목 · 등락률 ${ex === "upbit" ? "오전 9시" : "한국시간 0시"} 대비 · ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+    $("#mStatus").textContent = `${rows.length}종목 · 등락률 한국시간 0시 대비 · ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
   } catch (e) { $("#mErr").textContent = e.message; $("#mStatus").textContent = ""; }
   renderMarket();
 }
@@ -979,16 +1064,17 @@ async function scan() {
   scanning = true;
   $("#scanBtn").disabled = true; $("#scanProg").hidden = false; $("#sErr").textContent = "";
   const tfs = TF_LIST.filter(tf => S.tfs[tf]);
-  const exs = Object.keys(S.scanEx).filter(x => S.scanEx[x]);
+  const exs = [...new Set(Object.keys(S.scanEx).filter(x => S.scanEx[x]).map(src))];
   const errs = {};
   const fail = (lbl, e) => { errs[lbl] = (errs[lbl] || "") || e.message; };
   // 대상: 보유 + 관심 + 거래소별 거래대금 상위
   const items = new Map();
   const tick = {};
-  for (const ex of new Set([...exs, ...holdings.map(h => h.mkt), ...parseWatch(S.watch).map(w => w.mkt)])) {
+  for (const ex of new Set([...exs, ...holdings.map(h => src(h.mkt)), ...parseWatch(S.watch).map(w => src(w.mkt))])) {
     try { tick[ex] = await tickers(ex, 30e3); } catch (e) { tick[ex] = []; fail(EX_LABEL[ex], e); }
   }
   const add = (mkt, sym, name, watch) => {
+    mkt = src(mkt);
     const k = mkt + "|" + sym, t = (tick[mkt] || []).find(x => x.sym === sym);
     if (!items.has(k)) items.set(k, { mkt, sym, name: t?.name || name || sym, turnover: t?.turnover || 0, watch: false, held: false });
     const it = items.get(k);
@@ -1038,12 +1124,17 @@ async function scan() {
     await Promise.all([0, 1].map(async () => { while (i < arr.length) await job(arr[i++]); }));
   }));
   found.sort((a, b) => (b.rebreak ? 1 : 0) - (a.rebreak ? 1 : 0) || (b.held ? 1 : 0) - (a.held ? 1 : 0) || (b.watch ? 1 : 0) - (a.watch ? 1 : 0) || (b.star ? 1 : 0) - (a.star ? 1 : 0) || b.t - a.t || (b.score || 0) - (a.score || 0));
-  store.set("scan", { at: Date.now(), count: list.length, signals: found.map(f => ({ ...f, checks: f.checks })) });
+  const gone = dismissed();
+  store.set("scan", { at: Date.now(), count: list.length, signals: found.filter(f => !gone.has(sid(f))).map(f => ({ ...f, checks: f.checks })) });
   const eTxt = Object.entries(errs).map(([k, v]) => `${k}: ${v}`).join(" · ");
   $("#sErr").textContent = eTxt ? `일부 실패 — ${eTxt}` : "";
   scanning = false; $("#scanBtn").disabled = false; $("#scanProg").hidden = true;
   renderSignals();
 }
+// 지운 신호 (다시 스캔해도 안 띄움)
+const sid = x => `${x.mkt}|${x.sym}|${x.tf}|${x.period}|${x.dir}|${x.t}`;
+const dismissed = () => new Set(store.get("dismissed", []));
+function dismiss(ids) { store.set("dismissed", [...new Set([...store.get("dismissed", []), ...ids])].slice(-4000)); }
 function renderSignals() {
   markSeg("#sDir", "d", scanDir);
   const sc = store.get("scan", null);
@@ -1052,8 +1143,11 @@ function renderSignals() {
     const mins = Math.round((Date.now() - sc.at) / 60000);
     $("#scanStatus").textContent = `${mins < 1 ? "방금" : mins < 60 ? `${mins}분 전` : `${Math.round(mins / 60)}시간 전`} 스캔 · ${sc.count}개 코인 · 최근 하루 안의 돌파·이탈`;
   }
+  const gone = dismissed();
+  sc.signals = sc.signals.filter(x => !gone.has(sid(x)));
   const list = sc.signals.filter(x => x.dir === scanDir);
   list.sort((a, b) => (b.rebreak ? 1 : 0) - (a.rebreak ? 1 : 0));
+  renderSignals.shown = list.map(sid);
   // 🔥 재돌파 모아 보기 (코인당 최근 1개)
   const seen = new Set();
   const rb = sc.signals.filter(x => x.dir === "up" && x.rebreak).sort((a, b) => b.t - a.t).filter(x => { const k = x.mkt + "|" + x.sym; if (seen.has(k)) return false; seen.add(k); return true; });
@@ -1064,7 +1158,8 @@ function renderSignals() {
       <div class="small">일봉 ${x.rebreak.vol}배 돌파(${x.rebreak.daysAgo}일 전) → ${x.rebreak.fromHigh}% 눌림 → 재돌파 · 거래량 ${x.volRatio.toFixed(1)}배</div>
     </div>`).join("") : "";
   $("#sList").innerHTML = list.length ? list.map(x => `
-    <div class="scard ${x.dir === "up" ? "su" : "sd"} ${x.star ? "star" : ""} ${x.rebreak ? "rebreak" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}">
+    <div class="scard ${x.dir === "up" ? "su" : "sd"} ${x.star ? "star" : ""} ${x.rebreak ? "rebreak" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}" data-id="${esc(sid(x))}">
+      <button class="sdel" aria-label="지우기">✕</button>
       <div class="s1">${x.star ? '<b style="color:var(--star)">★</b>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.sym)} · ${EX_LABEL[x.mkt]}</span>
         ${x.score != null ? `<span class="rate ${x.star ? "strong" : "weak"}">${x.score}/${x.scoreMax}</span>` : ""}
         <span class="p num">${fmtPrice(x.price, x.mkt)}</span></div>
@@ -1082,6 +1177,12 @@ function renderSignals() {
     </div>`).join("") : `<div class="empty">${scanDir === "up" ? "상향 돌파" : "하향 이탈"} 신호가 없어요.</div>`;
 }
 $("#scanBtn").addEventListener("click", scan);
+$("#sClear").addEventListener("click", () => {
+  const ids = renderSignals.shown || [];
+  if (!ids.length) return;
+  if (!confirm(`지금 보이는 신호 ${ids.length}개를 지울까요? 다시 스캔해도 안 떠요 (새로 생기는 돌파는 떠요).`)) return;
+  dismiss(ids); renderSignals(); renderRbNote();
+});
 $("#sDir").addEventListener("click", e => { const b = e.target.closest("button[data-d]"); if (!b) return; scanDir = b.dataset.d; store.set("scanDir", scanDir); renderSignals(); });
 $("#rbTop").addEventListener("click", e => {
   const r = e.target.closest(".rbrow"); if (!r) return;
@@ -1090,12 +1191,13 @@ $("#rbTop").addEventListener("click", e => {
 });
 $("#sList").addEventListener("click", e => {
   const c = e.target.closest(".scard"); if (!c) return;
+  if (e.target.closest(".sdel")) { dismiss([c.dataset.id]); renderSignals(); renderRbNote(); return; }
   const [mkt, sym] = c.dataset.k.split("|");
   C.cur = { mkt, sym, name: c.dataset.n }; store.set("chartCur", C.cur); show("chart");
 });
 
 // ---------- 차트 ----------
-const C = { cur: store.get("chartCur", { mkt: "upbit", sym: "BTC", name: "비트코인" }), tf: store.get("chartTf", "1h"), chart: null, se: null, req: 0 };
+const C = { cur: store.get("chartCur", { mkt: "coin", sym: "BTC", name: "비트코인" }), tf: store.get("chartTf", "1h"), chart: null, se: null, req: 0 };
 const BTC_SYM = { upbit: "BTC", coin: "BTC", binance: "BTCUSDT" };
 const css = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
 function ensureChart() {
@@ -1125,7 +1227,9 @@ async function loadChart(keep = false) {
   for (let i = 0; i < 20 && typeof LightweightCharts === "undefined"; i++) await sleep(250); // 대체 주소에서 받는 중일 수 있음
   if (typeof LightweightCharts === "undefined") { $("#cMsg").textContent = "차트 도구를 불러오지 못했어요 (인터넷 확인 후 새로고침)"; return; }
   let c;
-  try { c = await candles(cur.mkt, cur.sym, tf, 700); } catch (e) { if (req === C.req) { $("#cMsg").textContent = "봉을 불러오지 못했어요: " + e.message; toast("차트: " + e.message); } return; }
+  const dsrc = src(cur.mkt);
+  if (dsrc !== cur.mkt) $("#cSym").textContent += ` (${EX_LABEL[dsrc]} 시세로 표시)`;
+  try { c = await candles(dsrc, cur.sym, tf, 700); } catch (e) { if (req === C.req) { $("#cMsg").textContent = "봉을 불러오지 못했어요: " + e.message; toast("차트: " + e.message); } return; }
   if (req !== C.req || !c.length) return;
   ensureChart();
   const close = c.map(x => x.c), from = Math.max(0, c.length - 500);
@@ -1160,8 +1264,54 @@ $("#cEx").addEventListener("click", e => {
   store.set("chartCur", C.cur); loadChart();
 });
 
+// ---------- 공시 (중계 경유) ----------
+const ymd = d => new Date(Date.now() + 9 * 3600e3 - d * 86400e3).toISOString().slice(0, 10).replace(/-/g, "");
+let dFilter = "all";
+async function loadDartPage(force) {
+  const cache = store.get("dart", null);
+  renderDart(cache);
+  if (!relayUrl()) { $("#dErr").textContent = "공시는 중계 주소가 있어야 볼 수 있어요. 설정 → 중계 주소를 넣어 주세요."; return; }
+  if (!force && cache && Date.now() - cache.at < 3 * 60e3) return;
+  $("#dStatus").textContent = "불러오는 중…"; $("#dErr").textContent = "";
+  try {
+    const items = [];
+    for (let page = 1; page <= 20; page++) {
+      const j = await getJSON(`${relayUrl()}?t=dart&bgn_de=${ymd(2)}&end_de=${ymd(0)}&sort=date&sort_mth=desc&page_count=100&page_no=${page}`);
+      if (j.status === "013") break;
+      if (j.status !== "000") throw new Error(j.message || j.error || "OpenDART 오류");
+      for (const r of j.list || []) {
+        if (r.corp_cls !== "Y" && r.corp_cls !== "K") continue;
+        const ty = dartClassify(r.report_nm);
+        if (ty) items.push({ id: r.rcept_no, corp: r.corp_name, code: r.stock_code, mkt: r.corp_cls === "Y" ? "코스피" : "코스닥", title: String(r.report_nm).trim(), type: ty.k, label: ty.label, date: r.rcept_dt });
+      }
+      if (page >= (j.total_page || 1)) break;
+    }
+    const prevIds = new Set((cache?.items || []).map(x => x.id));
+    for (const it of items) it.isNew = cache ? !prevIds.has(it.id) : false;
+    const next = { at: Date.now(), items };
+    store.set("dart", next);
+    renderDart(next);
+  } catch (e) { $("#dErr").textContent = "공시를 불러오지 못했어요: " + e.message; $("#dStatus").textContent = ""; }
+}
+function renderDart(c) {
+  const items = c?.items || [];
+  const types = [...new Map(items.map(x => [x.type, x.label])).entries()];
+  $("#dFilter").innerHTML = `<button data-f="all" class="${dFilter === "all" ? "on" : ""}">전체 ${items.length}</button>` + types.map(([k, l]) => `<button data-f="${k}" class="${dFilter === k ? "on" : ""}">${esc(l)}</button>`).join("");
+  const list = items.filter(x => dFilter === "all" || x.type === dFilter);
+  if (c) $("#dStatus").textContent = `최근 3일 · ${new Date(c.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준`;
+  $("#dList").innerHTML = list.length ? list.map(x => `
+    <div class="drow ${x.isNew ? "new" : ""}" data-id="${esc(x.id)}">
+      <div class="d1"><span class="dlabel t-${esc(x.type)}">${esc(x.label)}</span><b>${esc(x.corp)}</b><span class="muted small">${esc(x.mkt)} · ${+x.date.slice(4, 6)}/${+x.date.slice(6, 8)}</span></div>
+      <div class="d2">${esc(x.title)}</div>
+    </div>`).join("") : `<div class="empty">${c ? "최근 3일 동안 호재 유형 공시가 없어요." : ""}</div>`;
+}
+$("#dRefresh").addEventListener("click", () => loadDartPage(true));
+$("#dFilter").addEventListener("click", e => { const b = e.target.closest("button[data-f]"); if (!b) return; dFilter = b.dataset.f; renderDart(store.get("dart", null)); });
+$("#dList").addEventListener("click", e => { const r = e.target.closest(".drow"); if (r) window.open(`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${r.dataset.id}`, "_blank"); });
+
 // ---------- 설정 ----------
 function fillSettings() {
+  $("#sRelay").value = S.relay || "";
   $("#sWatch").value = S.watch || "";
   document.querySelectorAll("[data-sx]").forEach(c => { c.checked = !!S.scanEx[c.dataset.sx]; });
   document.querySelectorAll("[data-stf]").forEach(c => { c.checked = !!S.tfs[c.dataset.stf]; });
@@ -1169,6 +1319,9 @@ function fillSettings() {
   $("#sTop").value = String(S.top); $("#sVol").value = String(S.volMult); $("#sStar").value = String(S.starMin); $("#sHold").value = String(S.holdBars);
 }
 $("#sSave").addEventListener("click", () => {
+  S.relay = $("#sRelay").value.trim();
+  for (const k of Object.keys(tCache)) delete tCache[k];
+  cCache.clear();
   S.watch = $("#sWatch").value;
   S.scanEx = Object.fromEntries([...document.querySelectorAll("[data-sx]")].map(c => [c.dataset.sx, c.checked]));
   S.tfs = Object.fromEntries([...document.querySelectorAll("[data-stf]")].map(c => [c.dataset.stf, c.checked]));
@@ -1178,6 +1331,15 @@ $("#sSave").addEventListener("click", () => {
   store.set("settings", S);
   for (const h of holdings) if (H.status[h.id]) H.status[h.id].lines = {};
   toast("저장했어요");
+});
+$("#sRelayTest").addEventListener("click", async () => {
+  const u = $("#sRelay").value.trim();
+  if (!u) return ($("#sRelayMsg").textContent = "주소를 먼저 넣어 주세요.");
+  $("#sRelayMsg").textContent = "확인 중…";
+  try {
+    const k = await getJSON(`${u}?t=dart&bgn_de=${ymd(0)}&end_de=${ymd(0)}&page_count=1`);
+    $("#sRelayMsg").textContent = k.status === "000" || k.status === "013" ? "공시 OK — 저장을 눌러 주세요" : `공시: ${k.message || k.error || "응답 확인 필요"}`;
+  } catch (e) { $("#sRelayMsg").textContent = "연결 실패: 주소와 배포 설정(액세스: 모든 사용자)을 확인해 주세요"; }
 });
 $("#resetBtn").addEventListener("click", () => {
   if (!confirm("보유·관심 코인, 설정, 스캔 결과를 이 휴대폰에서 모두 지울까요?")) return;
@@ -1195,9 +1357,10 @@ function decodeImport(code) {
   return d;
 }
 function applyImport(d) {
-  const hs = (d.h || []).filter(x => ["upbit", "coin", "binance"].includes(x[0]) && x[3] > 0 && x[4] > 0)
+  const hs = (d.h || []).filter(x => EXS.includes(x[0]) && x[3] > 0 && x[4] > 0)
     .map((x, i) => ({ id: `${x[0]}|${x[1]}|${Date.now() + i}`, mkt: x[0], sym: x[1], name: x[2] || x[1], avg: +x[3], qty: +x[4] }));
-  const ws = (d.w || []).filter(x => ["upbit", "coin", "binance"].includes(x[0]));
+  const ws = (d.w || []).filter(x => EXS.includes(x[0]));
+  const skipped = (d.h || []).filter(x => x[0] === "upbit").length;
   const ask = `노트북에서 보낸 보유 코인 ${hs.length}개${ws.length ? `, 관심 코인 ${ws.length}개` : ""}를 가져올까요?\n(이 휴대폰의 보유 코인 목록은 이걸로 바뀌어요)`;
   if (!confirm(ask)) return false;
   holdings = hs; saveHoldings(); H.status = {};
@@ -1207,7 +1370,7 @@ function applyImport(d) {
     S.watch = [...String(S.watch || "").split("\n").filter(l => l.trim()), ...add].join("\n");
     store.set("settings", S);
   }
-  toast(`보유 코인 ${hs.length}개를 가져왔어요`);
+  toast(`보유 코인 ${hs.length}개를 가져왔어요${skipped ? ` (업비트 ${skipped}개는 휴대폰에서 빼요)` : ""}`);
   return true;
 }
 $("#iBtn").addEventListener("click", () => {
