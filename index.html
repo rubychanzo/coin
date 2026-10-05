@@ -282,7 +282,8 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 </nav>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.2.3/lightweight-charts.standalone.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"
+  onerror="var s=document.createElement('script');s.src='https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js';document.head.appendChild(s)"></script>
 <script>
 // 지표 계산 (배열은 과거 → 최신 순)
 
@@ -654,7 +655,13 @@ async function tickers(ex, maxAge = 10e3) {
   if (ex === "upbit") {
     const all = (await paced("upbit", `${HOST.upbit}/market/all?isDetails=true`)).filter(m => m.market.startsWith("KRW-"));
     rows = [];
-    for (let i = 0; i < all.length; i += 100) {
+    // 원화마켓 전체 시세를 한 번에 (안 되면 100개씩 나눠서)
+    try {
+      const tk = await paced("upbit", `${HOST.upbit}/ticker/all?quote_currencies=KRW`);
+      const by = Object.fromEntries(tk.map(t => [t.market, t]));
+      for (const m of all) { const t = by[m.market]; if (t) rows.push({ mkt: "upbit", sym: m.market.slice(4), name: m.korean_name, price: t.trade_price, chg: (t.signed_change_rate || 0) * 100, turnover: t.acc_trade_price_24h }); }
+    } catch (_) { rows = []; }
+    if (!rows.length) for (let i = 0; i < all.length; i += 100) {
       const chunk = all.slice(i, i + 100);
       const tk = await paced("upbit", `${HOST.upbit}/ticker?markets=${chunk.map(m => m.market).join(",")}`);
       const by = Object.fromEntries(tk.map(t => [t.market, t]));
@@ -1115,9 +1122,10 @@ async function loadChart(keep = false) {
   const cur = C.cur, tf = C.tf, req = ++C.req;
   $("#cName").textContent = cur.name; $("#cSym").textContent = `${cur.sym} · ${EX_LABEL[cur.mkt]} · ${TF_LABEL[tf]}`;
   if (!keep) $("#cMsg").textContent = "불러오는 중…";
-  if (typeof LightweightCharts === "undefined") { $("#cMsg").textContent = "차트 도구를 불러오지 못했어요 (인터넷 확인)"; return; }
+  for (let i = 0; i < 20 && typeof LightweightCharts === "undefined"; i++) await sleep(250); // 대체 주소에서 받는 중일 수 있음
+  if (typeof LightweightCharts === "undefined") { $("#cMsg").textContent = "차트 도구를 불러오지 못했어요 (인터넷 확인 후 새로고침)"; return; }
   let c;
-  try { c = await candles(cur.mkt, cur.sym, tf, 700); } catch (e) { if (req === C.req) $("#cMsg").textContent = e.message; return; }
+  try { c = await candles(cur.mkt, cur.sym, tf, 700); } catch (e) { if (req === C.req) { $("#cMsg").textContent = "봉을 불러오지 못했어요: " + e.message; toast("차트: " + e.message); } return; }
   if (req !== C.req || !c.length) return;
   ensureChart();
   const close = c.map(x => x.c), from = Math.max(0, c.length - 500);
