@@ -69,6 +69,7 @@ nav.bottom button.on { color: var(--fg); font-weight: 700; }
 .fcard .f3 { margin-top: 6px; font-size: 13px; font-weight: 600; }
 .fcard .f3.s2 { color: #6d28d9; } .fcard .f3.s3 { color: #15803d; }
 .fcard .f4 { margin-top: 3px; }
+.fbadge.link { background: #0e7490; }
 .fbadge { background: color-mix(in srgb, #7c3aed 55%, #64748b); color: #fff; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 5px; }
 .fbadge.buy { background: #7c3aed; }
 .ktag { font-size: 10px; font-weight: 800; padding: 0 4px; border-radius: 4px; color: #fff; margin-right: 3px; }
@@ -200,7 +201,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v6</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v7</small></h1>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
 </header>
@@ -291,8 +292,9 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <main class="page" id="p-flow" hidden>
   <div class="bar">
     <button class="primary" id="fRefresh">새로 불러오기</button>
-    <div class="seg" id="fInv"><button data-f="both" class="on">동시</button><button data-f="organ">기관</button><button data-f="foreign">외국인</button></div>
+    <div class="seg" id="fInv"><button data-f="both" class="on">동시</button><button data-f="organ">기관</button><button data-f="foreign">외국인</button><button data-f="ma">📈이평</button></div>
   </div>
+  <label class="help" style="display:flex;align-items:center;gap:6px;margin:0 14px 4px"><input type="checkbox" id="fLink" style="width:auto;flex:none;margin:0"> 🔗 수급·이평 둘 다 겹친 것만</label>
   <div class="bar" style="padding-top:0">
     <label class="help" style="display:flex;align-items:center;gap:6px;margin:0">주식 자금 <input id="fCap" type="number" inputmode="numeric" placeholder="만원" style="width:110px;padding:6px 8px"> 만원</label>
   </div>
@@ -308,9 +310,16 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
       <li><b>⑥ 산 다음</b> — 기관·외국인이 2일 연속 같이 팔면 줄이기. 계속 사며 오르면 손절선을 산 가격 근처로.</li>
       <li><b>처음 2~3주</b> — 아주 작게 또는 적기만. 노트북 성적표로 확인 뒤 늘리기.</li>
     </ol>
+    <b style="display:block;margin:6px 0 2px">📈 이평 (200·448일선, 일봉 종가)</b>
+    <ol>
+      <li><b>⏳ 임박</b> — 이평선 3% 아래에서 다가오는 중. 적어만 두고 종가로 넘는 날을 기다려요.</li>
+      <li><b>🟣 돌파 첫날</b> — 거래량 평소 1.5배↑ + 이평선 8% 안 + 이평선이 크게 꺾여 내려가지 않음 + 5일 기관·외국인 순매수. 다음 날 장중 이평선 근처로 눌릴 때 절반.</li>
+      <li><b>🟣 2~3일째 유지</b> — 직전 고점 넘을 때 나머지 절반. 종가가 이평선 아래로 내려가면 가짜 돌파로 보고 정리.</li>
+      <li><b>🔗 겹침</b> — 수급 👀이면서 이평 돌파·임박. 가장 먼저 볼 종목. 아직 검증 전이라 성적표로 확인해요.</li>
+    </ol>
   </details>
   <div id="fList"></div>
-  <p class="help" style="margin:10px 16px">네이버 증권 종목별 투자자 매매동향(코스피 시총 상위 200·코스닥 150)으로 계산해요. 순매수 금액은 주식 수 × 종가(추정). 장 마감 뒤 자료예요. 🟣 = 매수 고려(2일↑ 연속 동시 매수 + 평소의 1.5배↑ + 균형 + 위치 무난), 👀 = 지켜보기. 예측·투자 권유가 아니에요.</p>
+  <p class="help" style="margin:10px 16px">네이버 증권 종목별 투자자 매매동향(코스피 시총 상위 200·코스닥 150)으로 계산해요. 📈이평은 같은 종목들의 일봉으로 200·448일선 돌파(최근 3거래일)·임박을 봐요. 순매수 금액은 주식 수 × 종가(추정). 장 마감 뒤 자료예요. 🟣 = 매수 고려(2일↑ 연속 동시 매수 + 평소의 1.5배↑ + 균형 + 위치 무난), 👀 = 지켜보기. 예측·투자 권유가 아니에요.</p>
 </main>
 
 <!-- 설정 -->
@@ -1493,11 +1502,13 @@ $("#dFilter").addEventListener("click", e => { const b = e.target.closest("butto
 $("#dList").addEventListener("click", e => { const r = e.target.closest(".drow"); if (r) window.open(`https://dart.fss.or.kr/dsaf001/main.do?rcpNo=${r.dataset.id}`, "_blank"); });
 
 // ---------- 수급 (중계 경유) ----------
-let fInv = "both";
+let fInv = "both", fLink = false;
 async function loadFlowPage(fresh) {
   const cache = store.get("flow", null);
   renderFlow(cache);
   if (!relayUrl()) { $("#fErr").textContent = "수급은 중계 주소가 있어야 볼 수 있어요. 설정 → 중계 주소를 넣어 주세요."; return; }
+  if (fInv === "ma") return loadStockMa(fresh);
+  loadStockMa(false, true).catch(() => {});
   if (!fresh && cache && Date.now() - cache.got < 10 * 60e3) return;
   $("#fStatus").textContent = "불러오는 중… (처음엔 30초쯤 걸려요)"; $("#fErr").textContent = "";
   try {
@@ -1509,8 +1520,25 @@ async function loadFlowPage(fresh) {
     renderFlow(next);
   } catch (e) { $("#fErr").textContent = "수급을 불러오지 못했어요: " + e.message; $("#fStatus").textContent = ""; }
 }
+// 📈 이평 돌파 (중계 t=stock)
+async function loadStockMa(fresh, quiet) {
+  const cache = store.get("stockma", null);
+  if (!fresh && cache && Date.now() - cache.got < 10 * 60e3) { if (!quiet) renderFlow(store.get("flow", null)); return; }
+  if (!quiet) { $("#fStatus").textContent = "이평 계산 중… (처음엔 1분쯤 걸려요)"; $("#fErr").textContent = ""; }
+  try {
+    const j = await getJSON(`${relayUrl()}?t=stock${fresh ? "&fresh=1" : ""}`);
+    if (j.error) throw new Error(j.error);
+    if (!j.items) throw new Error("중계 코드가 예전 버전이에요. 새 중계 코드(주식 이평 포함)로 바꿔 주세요");
+    store.set("stockma", { ...j, got: Date.now() });
+  } catch (e) { if (!quiet) $("#fErr").textContent = "이평을 불러오지 못했어요: " + e.message; }
+  if (!quiet || fInv !== "ma") renderFlow(store.get("flow", null));
+}
 function renderFlow(c) {
-  const items = (c?.items || []).filter(x => x.inv === fInv);
+  const sm = store.get("stockma", null);
+  const maBy = new Map((sm?.items || []).map(x => [x.code, x]));
+  const flowPick = new Map((c?.items || []).filter(x => x.inv === "both" && x.pick).map(x => [x.code, x]));
+  if (fInv === "ma") return renderMa(sm, flowPick);
+  const items = (c?.items || []).filter(x => x.inv === fInv && (!fLink || (x.pick && maBy.has(x.code))));
   if (document.activeElement !== $("#fCap")) $("#fCap").value = store.get("flowCap", "") || "";
   const cap = (Number(store.get("flowCap", 0)) || 0) * 1e4;
   if (c) $("#fStatus").textContent = `${+c.date.slice(4, 6)}/${+c.date.slice(6, 8)} 기준 · ${new Date(c.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 계산`;
@@ -1523,7 +1551,7 @@ function renderFlow(c) {
   $("#fList").innerHTML = list.length ? list.map(x => {
     const size = cap && x.stopPct ? cap * 0.015 / Math.abs(x.stopPct / 100) : 0;
     return `<div class="fcard ${x.pick ? "pick" : ""} ${x.buy ? "buy" : ""}">
-      <div class="f1">${x.pick ? `<span class="fbadge ${x.buy ? "buy" : ""}">${x.buy ? "🟣 매수 고려" : "👀 지켜보기"} ${x.pickRank}위</span>` : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.mkt)} ${esc(x.code)}</span>
+      <div class="f1">${x.pick ? `<span class="fbadge ${x.buy ? "buy" : ""}">${x.buy ? "🟣 매수 고려" : "👀 지켜보기"} ${x.pickRank}위</span>` : ""}${maBy.has(x.code) ? `<span class="fbadge link">🔗 ${maBy.get(x.code).P}일선 ${maBy.get(x.code).kind === "near" ? "임박" : "돌파"}</span>` : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.mkt)} ${esc(x.code)}</span>
         <span class="f1r">${x.price ? Math.round(x.price).toLocaleString("ko-KR") + "원" : ""}</span></div>
       <div class="f2 small">${x.inv === "both" ? `합계 <b>${eok(x.amt)}</b> (기관 ${eok(x.o)} · 외국인 ${eok(x.f)})` : `순매수 <b>${eok(x.amt)}</b>`}
         · ${x.streak >= 2 ? `<b>${x.streak}일 연속</b>` : "1일"}${x.ratio ? ` · 평소 ${x.ratio.toFixed(1)}배` : ""}${x.d5 != null ? ` · 5일 ${pct(x.d5)}` : ""}${x.g200 != null ? ` · 200일선 ${pct(x.g200)}` : ""}</div>
@@ -1532,8 +1560,27 @@ function renderFlow(c) {
     </div>`;
   }).join("") : `<div class="empty">${c ? "해당하는 종목이 없어요." : ""}</div>`;
 }
-$("#fRefresh").addEventListener("click", () => loadFlowPage(true));
-$("#fInv").addEventListener("click", e => { const b = e.target.closest("button[data-f]"); if (!b) return; fInv = b.dataset.f; $("#fInv").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); renderFlow(store.get("flow", null)); });
+function renderMa(sm, flowPick) {
+  const cap = (Number(store.get("flowCap", 0)) || 0) * 1e4;
+  if (sm) $("#fStatus").textContent = `📈 이평 · ${+sm.date.slice(4, 6)}/${+sm.date.slice(6, 8)} ${sm.live ? "장중(오늘 봉 미확정)" : "종가"} 기준 · ${sm.scanned}종목 · ${new Date(sm.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 계산`;
+  const pct = v => v == null ? "–" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+  const list = (sm?.items || []).filter(x => !fLink || flowPick.has(x.code));
+  $("#fList").innerHTML = list.length ? list.map(x => {
+    const size = cap && x.stopPct ? cap * 0.015 / Math.abs(x.stopPct / 100) : 0;
+    const f = flowPick.get(x.code);
+    return `<div class="fcard pick ${x.buy ? "buy" : ""}">
+      <div class="f1"><span class="fbadge ${x.buy ? "buy" : ""}">${x.buy ? "🟣 매수 고려" : x.kind === "near" ? "⏳ 임박" : "👀 지켜보기"} ${x.pickRank}위</span>${f ? `<span class="fbadge link">🔗 수급 ${f.buy ? "🟣" : "👀"}</span>` : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.mkt)} ${esc(x.code)}</span>
+        <span class="f1r">${Math.round(x.price).toLocaleString("ko-KR")}원</span></div>
+      <div class="f2 small"><b>${x.P}일선 ${pct(x.gap)}</b> (${Math.round(x.ma).toLocaleString("ko-KR")}원)${x.kind === "cross" ? ` · 돌파 ${x.days}일째 · 돌파일 거래량 ${x.volX ? x.volX.toFixed(1) + "배" : "–"}` : ` · 5일 사이 ${x.approach.toFixed(1)}%p 다가옴`}
+        · 이평선 기울기 ${pct(x.slope)} · 5일 ${pct(x.d5)} · 기관+외국인 5일 ${x.flow5 == null ? "–" : (x.flow5 / 1e8).toFixed(1) + "억"}</div>
+      <div class="f3 s${x.step}">${esc(x.todo || "")}</div>
+      <div class="f4 small">손절 참고 <b>${Math.round(x.stop).toLocaleString("ko-KR")}원</b> (${pct(x.stopPct)}) · 최대 금액 ${size ? `<b>${Math.round(size / 1e4).toLocaleString("ko-KR")}만원</b>${x.step === 2 ? ` (처음 절반 ${Math.round(size / 2e4).toLocaleString("ko-KR")}만원)` : ""}` : "자금 입력"}</div>
+    </div>`;
+  }).join("") : `<div class="empty">${sm ? (fLink ? "수급 👀과 겹친 종목이 없어요." : "최근 3거래일 안에 돌파·임박한 종목이 없어요.") : "불러오는 중이거나 아직 안 받았어요."}</div>`;
+}
+$("#fLink").addEventListener("change", () => { fLink = $("#fLink").checked; if (fLink && !store.get("stockma", null) && relayUrl()) loadStockMa(false, true); renderFlow(store.get("flow", null)); });
+$("#fRefresh").addEventListener("click", () => { if (fInv === "ma") loadStockMa(true); else loadFlowPage(true); });
+$("#fInv").addEventListener("click", e => { const b = e.target.closest("button[data-f]"); if (!b) return; fInv = b.dataset.f; $("#fInv").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); renderFlow(store.get("flow", null)); if (fInv === "ma" && relayUrl()) loadStockMa(); });
 $("#fCap").addEventListener("change", () => { store.set("flowCap", Number($("#fCap").value) || 0); renderFlow(store.get("flow", null)); });
 
 // ---------- 설정 ----------
