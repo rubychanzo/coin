@@ -201,7 +201,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v7</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v8</small></h1>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
 </header>
@@ -248,6 +248,36 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 
 <!-- 신호 -->
 <main class="page" id="p-sig" hidden>
+  <div class="bar" style="padding-bottom:0"><div class="seg" id="sMode"><button data-m="sig" class="on">⚡ 이평 신호</button><button data-m="rank">🪙 코인 순위</button></div></div>
+  <div id="rankWrap" hidden>
+    <div class="bar">
+      <button class="primary" id="rkRun">지금 계산</button>
+      <div class="seg" id="rkTf"><button data-f="1h">1시간</button><button data-f="4h">4시간</button><button data-f="1d">일봉</button></div>
+    </div>
+    <div class="bar" style="padding-top:0">
+      <div class="seg" id="rkKind"><button data-f="all" class="on">전체</button><button data-f="buy">🟣</button><button data-f="cross">돌파</button><button data-f="near">⏳임박</button></div>
+    </div>
+    <label class="help" style="display:flex;align-items:center;gap:6px;margin:0 14px 4px"><input type="checkbox" id="rkLink" style="width:auto;flex:none;margin:0"> 🔗 체결 수급까지 맞는 것만</label>
+    <div class="bar" style="padding-top:0">
+      <label class="help" style="display:flex;align-items:center;gap:6px;margin:0">코인 자금 <input id="rkCap" type="number" inputmode="numeric" placeholder="만원" style="width:110px;padding:6px 8px"> 만원</label>
+    </div>
+    <div class="prog" hidden id="rkProg" style="margin:0 14px 6px"><i></i></div>
+    <div class="muted small" style="padding:0 14px 6px" id="rkStatus"></div>
+    <div class="err" id="rkErr"></div>
+    <details class="fguide"><summary>판단 순서 보기</summary>
+      <ol>
+        <li><b>⏳ 임박</b> — 이평선 3% 아래에서 다가오는 중. 적어만 두고 봉 마감으로 넘는지 봐요.</li>
+        <li><b>🟣 돌파 첫 봉</b> — 봉 마감으로 200·448선 넘음 + 거래량 평소 1.5배↑ + 이평선 8% 안 + 이평선이 크게 꺾여 내려가지 않음 + <b>바이낸스 매수 체결 50%↑</b> + 선물 미결제약정 크게 안 줄어듦 + 펀딩비 과열 아님. 다음 봉에서 이평선 근처로 눌릴 때 절반.</li>
+        <li><b>🟣 2~3봉째 유지</b> — 직전 고점 넘을 때 나머지 절반. 봉 마감이 이평선 아래면 정리.</li>
+        <li><b>👀 지켜보기</b> — 돌파했지만 조건 부족. 바이낸스에 없는 코인은 체결 수급을 확인 못 해서 🟣가 안 돼요.</li>
+        <li><b>금액</b> — 손절 참고까지 빠져도 코인 자금의 1.5%만 잃는 크기. 선물은 레버리지 곱하기 전 실제 노출 금액.</li>
+        <li><b>처음 2~3주</b> — 아주 작게 또는 적기만. 노트북 성적표로 확인 뒤 늘리기.</li>
+      </ol>
+    </details>
+    <div id="rkList"></div>
+    <p class="help" style="margin:10px 16px">빗썸·바이낸스 현물·선물·알파(중계가 있으면 빗썸에 없는 업비트 코인도) 중 거래대금이 충분한 코인을 마감된 봉으로 계산해요 (원화 24h 10억↑ · 바이낸스 500만$↑ · 알파 100만$↑). 같은 코인은 한 줄로 묶어요. 계산은 2~4분 걸리고 노트북 앱과 같은 기준이에요. 예측·투자 권유가 아니에요.</p>
+  </div>
+  <div id="sigWrap">
   <div class="scanbox">
     <div style="display:flex;gap:8px;align-items:center">
       <button class="primary" id="scanBtn" style="flex:1">지금 스캔</button>
@@ -260,6 +290,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
   <div class="err" id="sErr"></div>
   <div id="rbTop" class="rbtop"></div>
   <div id="sList"></div>
+  </div>
 </main>
 
 <!-- 차트 -->
@@ -652,6 +683,155 @@ function analyzeSeries(candles, lastClosed = false, chartBars = 150) {
 
 if (typeof module !== "undefined") module.exports.analyzeSeries = analyzeSeries;
 
+// 주식 200·448일선 돌파 판정 — 노트북 알리미(background.js)와 휴대폰 중계(Apps Script)가 같이 씀
+// 🟣 매수 고려: 최근 3거래일 안에 종가로 돌파하고 지금도 위 + 돌파일 거래량 평소(20일) 1.5배↑ + 이평선에서 8% 이내
+//              + 이평선이 크게 내려가는 중이 아님(20일 -3%보다 덜) + 하루 거래대금 30억↑ + 최근 5일 기관+외국인 합계 순매수
+// 👀 지켜보기: 돌파했지만 위 조건 일부 부족, 또는 이평선 3% 아래에서 5일 사이 2%p↑ 다가오는 중(임박)
+// 일봉 배열(오래된→최근)로 돌파/임박 판정. 해당 없으면 null
+function stockSignal(k, o) {
+  o = o || {};
+  const minTurn = o.minTurn == null ? 10e8 : o.minTurn;
+  const n = k.length; if (n < 230) return null;
+  const C = k.map(function (x) { return x.c; });
+  const pre = [0]; C.forEach(function (c) { pre.push(pre[pre.length - 1] + c); });
+  const ma = function (P, i) { return i < P - 1 ? NaN : (pre[i + 1] - pre[i + 1 - P]) / P; };
+  const volAvg = function (i) { let s = 0, c = 0; for (let j = Math.max(0, i - 20); j < i; j++) { s += k[j].v; c++; } return c ? s / c : 0; };
+  const last = n - 1, price = C[last];
+  let tv = 0; for (let j = n - 20; j < n; j++) tv += k[j].c * k[j].v;
+  const turn20 = tv / 20;
+  if (turn20 < minTurn) return null; // 거래대금이 너무 적은 종목 제외
+  let best = null;
+  [200, 448].forEach(function (P) {
+    if (n < P + 25) return;
+    const m = ma(P, last); if (!(m > 0)) return;
+    const gap = (price / m - 1) * 100;
+    const slope = (m / ma(P, last - 20) - 1) * 100; // 20거래일 동안 이평선 기울기
+    // 최근 3거래일 안 돌파 (종가 기준) + 지금도 위
+    let crossAt = -1;
+    for (let i = last; i >= last - 2; i--) if (C[i] > ma(P, i) && C[i - 1] <= ma(P, i - 1)) { crossAt = i; break; }
+    let r = null;
+    if (crossAt >= 0 && price > m) {
+      let held = true; for (let i = crossAt; i <= last; i++) if (!(C[i] > ma(P, i))) held = false;
+      if (held) {
+        const va = volAvg(crossAt);
+        // 직전 60일 동안 이평선 아래에 있던 날 비율 (오래 눌려 있다 올라온 것일수록 의미 큼)
+        let below = 0; for (let i = crossAt - 60; i < crossAt; i++) if (C[i] <= ma(P, i)) below++;
+        r = { kind: 'cross', P: P, ma: m, gap: gap, slope: slope, days: last - crossAt + 1, volX: va ? k[crossAt].v / va : null, below60: below / 60 };
+      }
+    } else if (gap < 0 && gap >= -3) {
+      const g5 = (C[last - 5] / ma(P, last - 5) - 1) * 100;
+      if (gap - g5 >= 2) { const va = volAvg(last); r = { kind: 'near', P: P, ma: m, gap: gap, slope: slope, approach: gap - g5, volX: va ? k[last].v / va : null }; }
+    }
+    if (r && (!best || (r.kind === 'cross' && best.kind !== 'cross') || (r.kind === best.kind && P === 448))) best = r;
+  });
+  if (!best) return null;
+  let low5 = Infinity; for (let j = n - 5; j < n; j++) low5 = Math.min(low5, k[j].l);
+  let hi20 = 0; for (let j = n - 21; j < n - 1; j++) hi20 = Math.max(hi20, k[j].h);
+  best.date = k[last].d; best.price = price; best.turn20 = turn20; best.hi20 = hi20;
+  best.chg1 = (price / C[last - 1] - 1) * 100; best.d5 = (price / C[last - 5] - 1) * 100;
+  best.stop = Math.max(Math.min(best.ma * 0.98, low5 * 0.99), price * 0.93);
+  if (best.stop >= price) best.stop = price * 0.97;
+  best.stopPct = (best.stop / price - 1) * 100;
+  return best;
+}
+function stockFlow(x, rows) {
+  const r5 = rows.slice(0, 5);
+  let sum = 0; r5.forEach(function (r) { sum += ((r.organ || 0) + (r.foreign || 0)) * r.c; });
+  x.flow5 = sum;
+  const r0 = rows[0];
+  if (r0 && r0.d === x.date) { x.flowToday = ((r0.organ || 0) + (r0.foreign || 0)) * r0.c; x.bothToday = (r0.organ || 0) > 0 && (r0.foreign || 0) > 0; }
+}
+function stockGrade(x) {
+  const why = [];
+  if (x.kind === 'cross') {
+    if (!(x.volX >= 1.5)) why.push('돌파 거래량 약함');
+    if (x.gap > 8) why.push('이평선에서 너무 멀어짐');
+    if (x.slope < -3) why.push('이평선이 내려가는 중');
+    if (x.turn20 < 30e8) why.push('거래대금 적음');
+    if (x.flow5 == null) why.push('수급 확인 못 함'); else if (x.flow5 <= 0) why.push('기관·외국인 5일 순매도');
+    x.buy = !why.length;
+  } else { x.buy = false; why.push('아직 돌파 전'); }
+  x.why = why;
+  let s = (x.kind === 'cross' ? 20 : 5) + (x.P === 448 ? 4 : 0)
+    + Math.min(x.volX || 0, 5) * 4
+    + (x.gap >= 0 && x.gap <= 4 ? 8 : x.gap > 4 && x.gap <= 8 ? 4 : x.gap < 0 ? 2 : -5)
+    + (x.slope >= 0 ? 6 : x.slope >= -3 ? 2 : -4)
+    + (x.below60 >= 0.7 ? 5 : 0)
+    + (x.flow5 > 0 ? 6 : x.flow5 < 0 ? -4 : 0) + (x.bothToday ? 4 : 0)
+    + (x.turn20 >= 100e8 ? 3 : 0);
+  x.score = Math.round(s * 10) / 10;
+  x.step = x.kind === 'near' ? 1 : x.buy ? (x.days >= 2 ? 3 : 2) : 0;
+}
+
+// 다음 할 일 문구 (노트북·휴대폰 같은 말)
+function stockTodo(x) {
+  const won = function (v) { return Math.round(v).toLocaleString('ko-KR') + '원'; };
+  if (x.kind === 'near') return '① 적어 두기 → ' + x.P + '일선(' + won(x.ma) + ')을 종가로 넘는지 확인 (지금 ' + x.gap.toFixed(1) + '%)';
+  if (x.step === 2) return '② 🟣 돌파 첫날 → 다음 날 장중 ' + x.P + '일선 근처로 눌리면 절반 (시가 +3%↑면 대기)';
+  if (x.step === 3) return '③ ' + x.days + '일째 유지 → 직전 고점(' + won(x.hi20) + ') 넘을 때 나머지 절반 · 종가가 ' + x.P + '일선 아래로 가면 정리';
+  return '지켜보기 → 돌파했지만 ' + (x.why.join(', ') || '조건 부족');
+}
+
+
+// ================= 코인 (같은 이평 판정 + 바이낸스 체결 수급) =================
+// 봉은 마감된 것만 넣어야 함(진행 중인 봉 제외). 판정은 stockSignal(k, { minTurn: 0 }) 그대로 씀 — '3거래일'이 '3봉'이 됨
+// 코인 수급(기관·외국인 대신): 바이낸스 체결 데이터
+//  · 매수 체결 비율: 최근 6봉 거래대금 중 시장가 매수 비율 (50%↑ = 사려는 쪽이 더 적극적)
+//  · 선물 미결제약정(OI) 변화: 최근 6봉 동안 늘면 새 돈이 들어오는 중, 크게 줄면 숏 청산으로 오른 것일 수 있음
+//  · 펀딩비 0.1%↑ = 롱 과열
+// 원화 거래소 코인도 바이낸스에 같은 코인이 있으면 그 수급을 같이 봄 (없으면 '확인 못 함' → 🟣 안 됨)
+function coinBuyShare(raw) {
+  // raw: 바이낸스 klines 배열 [t,o,h,l,c,v,closeT,quoteVol,trades,takerBase,takerQuote] (마감된 봉만)
+  const r6 = raw.slice(-6);
+  let q = 0, b = 0; r6.forEach(function (r) { q += +r[7]; b += +r[10]; });
+  return q > 0 ? b / q : null;
+}
+function coinFlow(x, f) {
+  // f: { buyShare, oiChg, funding, src }
+  if (!f) return;
+  x.buyShare = f.buyShare; x.oiChg = f.oiChg; x.funding = f.funding; x.flowSrc = f.src;
+  x.flowOk = f.buyShare != null && f.buyShare >= 0.5 && !(f.oiChg != null && f.oiChg < -3);
+}
+function coinGrade(x) {
+  const why = [];
+  if (x.kind === 'cross') {
+    if (!(x.volX >= 1.5)) why.push('돌파 거래량 약함');
+    if (x.gap > 8) why.push('이평선에서 너무 멀어짐');
+    if (x.slope < -3) why.push('이평선이 내려가는 중');
+    if (x.buyShare == null) why.push('체결 수급 확인 못 함');
+    else {
+      if (x.buyShare < 0.5) why.push('매도 체결이 더 많음');
+      if (x.oiChg != null && x.oiChg < -3) why.push('선물 미결제약정 감소(숏 청산성 상승일 수 있음)');
+    }
+    if (x.funding != null && x.funding >= 0.001) why.push('펀딩비 과열');
+    x.buy = !why.length;
+  } else { x.buy = false; why.push('아직 돌파 전'); }
+  x.why = why;
+  let s = (x.kind === 'cross' ? 20 : 5) + (x.P === 448 ? 4 : 0)
+    + Math.min(x.volX || 0, 5) * 4
+    + (x.gap >= 0 && x.gap <= 4 ? 8 : x.gap > 4 && x.gap <= 8 ? 4 : x.gap < 0 ? 2 : -5)
+    + (x.slope >= 0 ? 6 : x.slope >= -3 ? 2 : -4)
+    + (x.below60 >= 0.7 ? 5 : 0)
+    + (x.buyShare == null ? 0 : x.buyShare >= 0.55 ? 8 : x.buyShare >= 0.5 ? 4 : -4)
+    + (x.oiChg == null ? 0 : x.oiChg > 3 ? 4 : x.oiChg < -3 ? -4 : 0)
+    + (x.funding != null && x.funding >= 0.001 ? -5 : 0);
+  x.score = Math.round(s * 10) / 10;
+  x.step = x.kind === 'near' ? 1 : x.buy ? (x.days >= 2 ? 3 : 2) : 0;
+}
+function coinTodo(x, tfLabel) {
+  const bar = tfLabel || '봉';
+  if (x.kind === 'near') return '① 적어 두기 → ' + bar + ' 마감이 ' + x.P + '선을 넘는지 확인 (지금 ' + x.gap.toFixed(1) + '%)';
+  if (x.step === 2) return '② 🟣 돌파 첫 ' + bar + ' → 다음 봉에서 ' + x.P + '선 근처로 눌릴 때 절반 (바로 +5%↑ 뛰면 대기)';
+  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → 직전 고점 넘을 때 나머지 절반 · ' + bar + ' 마감이 ' + x.P + '선 아래면 정리';
+  return '지켜보기 → 돌파했지만 ' + (x.why.join(', ') || '조건 부족');
+}
+// 거래소가 달라도 같은 코인끼리 묶는 이름 (선물 1000PEPE → PEPE)
+function coinBase(mkt, sym, name) {
+  if (mkt === 'coin' || mkt === 'upbit') return String(sym).toUpperCase();
+  if (mkt === 'binance') return String(sym).replace(/USDT$/, '').toUpperCase();
+  return String(name || sym).replace(/USDT$/, '').replace(/^1000+/, '').toUpperCase();
+}
+
 function confirmUps(sigs, c5, c5Closed, holdBars, keepEarly = false) {
   if (!holdBars) return sigs;
   const closed = c5 ? (c5Closed ? c5 : c5.slice(0, -1)) : null;
@@ -999,7 +1179,7 @@ function show(p) {
   document.querySelectorAll("nav.bottom button").forEach(b => b.classList.toggle("on", b.dataset.p === p));
   if (p === "hold") loadHold();
   if (p === "market") loadMarket();
-  if (p === "sig") renderSignals();
+  if (p === "sig") { renderSignals(); applySMode(); }
   if (p === "chart") loadChart();
   if (p === "set") fillSettings();
   if (p === "dart") loadDartPage();
@@ -1579,6 +1759,113 @@ function renderMa(sm, flowPick) {
   }).join("") : `<div class="empty">${sm ? (fLink ? "수급 👀과 겹친 종목이 없어요." : "최근 3거래일 안에 돌파·임박한 종목이 없어요.") : "불러오는 중이거나 아직 안 받았어요."}</div>`;
 }
 $("#fLink").addEventListener("change", () => { fLink = $("#fLink").checked; if (fLink && !store.get("stockma", null) && relayUrl()) loadStockMa(false, true); renderFlow(store.get("flow", null)); });
+// ---------- 🪙 코인 순위 (노트북과 같은 판정: stockma.js) ----------
+const RANK_MK = [{ m: "coin", min: 1e9 }, { m: "upbit", min: 1e9 }, { m: "binance", min: 5e6 }, { m: "binancef", min: 5e6 }, { m: "binancea", min: 1e6 }];
+const RK_MS = { "1h": 3600e3, "4h": 4 * 3600e3, "1d": 86400e3 }, RK_LABEL = { "1h": "1시간봉", "4h": "4시간봉", "1d": "일봉" };
+let rkBusy = false, rkKind = "all", rkLink = false;
+async function rkCandles(mkt, sym, tf) {
+  let raw = null, c;
+  if (mkt === "binance" || mkt === "binancef") {
+    raw = mkt === "binance" ? await binanceGet(`/api/v3/klines?symbol=${sym}&interval=${tf}&limit=600`) : await bnVia("fapi", `/fapi/v1/klines?symbol=${sym}&interval=${tf}&limit=600`);
+    c = raw.map(r => ({ t: r[0], o: +r[1], h: +r[2], l: +r[3], c: +r[4], v: +r[5] }));
+  } else c = await candles(mkt, sym, tf, 480);
+  const now = Date.now(), ms = RK_MS[tf];
+  return { candles: c.filter(x => x.t + ms <= now), raw: raw && raw.filter(r => +r[0] + ms <= now) };
+}
+async function runRank() {
+  if (rkBusy) return;
+  rkBusy = true; $("#rkErr").textContent = ""; $("#rkRun").disabled = true;
+  const tf = store.get("rankTf", "4h");
+  const prog = (d, t) => { $("#rkProg").hidden = false; $("#rkProg i").style.width = (t ? d / t * 100 : 5) + "%"; $("#rkStatus").textContent = `계산 중… ${d}/${t || "?"}`; };
+  try {
+    prog(0, 0);
+    const lists = {}, errs = [];
+    await Promise.all(RANK_MK.map(async ({ m, min }) => {
+      if (m === "upbit" && !relayUrl()) return;
+      try { lists[m] = (await tickers(m, 60e3)).filter(x => x.turnover >= min); } catch (e) { errs.push(`${EX_LABEL[m]} 목록 실패`); lists[m] = []; }
+    }));
+    // 업비트는 중계를 거쳐 느려서, 빗썸에 없는 코인만
+    const bithumbSet = new Set((lists.coin || []).map(x => x.sym));
+    if (lists.upbit) lists.upbit = lists.upbit.filter(x => !bithumbSet.has(x.sym));
+    let fut = {}; try { fut = await futInfo(); } catch (_) {}
+    const futByBase = {}; for (const [k, v] of Object.entries(fut)) futByBase[String(v.base).replace(/^1000+/, "").toUpperCase()] = k;
+    const fundBy = {}; (lists.binancef || []).forEach(x => { fundBy[x.sym] = x.funding; });
+    const spotSet = new Set((lists.binance || []).map(x => x.sym));
+    const uni = Object.values(lists).flat();
+    const cand = [], fails = {};
+    let done = 0;
+    const job = async it => {
+      try {
+        const { candles: k, raw } = await rkCandles(it.mkt, it.sym, tf);
+        const r = stockSignal(k, { minTurn: 0 });
+        if (r) { Object.assign(r, { mkt: it.mkt, sym: it.sym, name: it.name, base: coinBase(it.mkt, it.sym, it.name) }); if (raw) r._raw = raw; cand.push(r); }
+      } catch (_) { fails[it.mkt] = (fails[it.mkt] || 0) + 1; }
+      done++; if (done % 5 === 0) prog(done, uni.length);
+    };
+    const run = async (arr, n) => { let i = 0; await Promise.all(Array.from({ length: n }, async () => { while (i < arr.length) await job(arr[i++]); })); };
+    const by = m => uni.filter(x => x.mkt === m);
+    await Promise.all([run(by("coin"), 3), run(by("upbit"), 1), run(by("binance"), 4), run(by("binancef"), 4), run(by("binancea"), 2)]);
+    // 후보만 바이낸스 체결 수급
+    const fc = {};
+    for (const b of [...new Set(cand.map(x => x.base))]) {
+      let f = null;
+      try {
+        const fs = futByBase[b], ss = spotSet.has(b + "USDT") ? b + "USDT" : null;
+        if (fs || ss) {
+          const own = cand.find(x => x._raw && ((fs && x.mkt === "binancef" && x.sym === fs) || (!fs && x.mkt === "binance" && x.sym === ss)));
+          const raw = own ? own._raw : (await rkCandles(fs ? "binancef" : "binance", fs || ss, tf)).raw;
+          f = { buyShare: coinBuyShare(raw), src: fs ? "선물" : "현물", funding: fs ? (fundBy[fs] ?? null) : null, oiChg: null };
+          if (fs) { try { const oi = await bnVia("fapi", `/futures/data/openInterestHist?symbol=${fs}&period=${tf}&limit=7`); if (Array.isArray(oi) && oi.length >= 2) f.oiChg = (+oi[oi.length - 1].sumOpenInterestValue / +oi[0].sumOpenInterestValue - 1) * 100; } catch (_) {} }
+        }
+      } catch (_) {}
+      fc[b] = f;
+    }
+    for (const x of cand) { coinFlow(x, fc[x.base]); coinGrade(x); x.todo = coinTodo(x, RK_LABEL[tf]); delete x._raw; }
+    const tierOf = x => x.buy ? 3 : x.kind === "cross" ? 2 : 1;
+    const g = new Map(); for (const x of cand) { if (!g.has(x.base)) g.set(x.base, []); g.get(x.base).push(x); }
+    const items = [];
+    for (const arr of g.values()) { arr.sort((a, b) => tierOf(b) - tierOf(a) || b.score - a.score); const top = arr[0]; top.also = arr.slice(1).map(y => ({ mkt: y.mkt, kind: y.kind, buy: y.buy })); items.push(top); }
+    items.sort((a, b) => tierOf(b) - tierOf(a) || b.score - a.score);
+    items.forEach((x, i) => { x.rank = i + 1; });
+    const failTxt = Object.entries(fails).map(([m, n]) => `${EX_LABEL[m]} ${n}개 못 받음`);
+    store.set("rank", { at: Date.now(), tf, scanned: uni.length, cand: cand.length, upbit: !!lists.upbit, errors: [...errs, ...failTxt], items: items.slice(0, 120) });
+  } catch (e) { $("#rkErr").textContent = "계산하지 못했어요: " + e.message; }
+  finally { rkBusy = false; $("#rkRun").disabled = false; $("#rkProg").hidden = true; renderRank(); }
+}
+function renderRank() {
+  const c = store.get("rank", null), tf = store.get("rankTf", "4h");
+  $("#rkTf").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.f === tf));
+  if (document.activeElement !== $("#rkCap")) $("#rkCap").value = store.get("coinCap", "") || "";
+  const cap = (Number(store.get("coinCap", 0)) || 0) * 1e4;
+  if (!rkBusy) $("#rkStatus").textContent = !c ? "지금 계산을 누르면 거래소 전체를 계산해요 (2~4분)" : `${RK_LABEL[c.tf]} · ${new Date(c.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 계산 · ${c.scanned}개 중 돌파·임박 ${c.cand}개${c.upbit ? "" : " · 업비트는 중계 주소가 있어야 함"}${c.errors?.length ? " · " + c.errors.join(", ") : ""}${c.tf !== tf ? ` · ${RK_LABEL[tf]}로 보려면 다시 계산` : ""}`;
+  const pct = v => v == null ? "–" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+  const list = (c?.items || []).filter(x => (rkKind === "all" || (rkKind === "buy" ? x.buy : x.kind === rkKind)) && (!rkLink || x.flowOk));
+  $("#rkList").innerHTML = list.length ? list.map(x => {
+    const size = cap && x.stopPct ? cap * 0.015 / Math.abs(x.stopPct / 100) : 0;
+    return `<div class="fcard pick ${x.buy ? "buy" : ""} rkrow" data-m="${esc(x.mkt)}" data-s="${esc(x.sym)}" data-n="${esc(x.name)}">
+      <div class="f1"><span class="fbadge ${x.buy ? "buy" : ""}">${x.buy ? "🟣 매수 고려" : x.kind === "near" ? "⏳ 임박" : "👀 지켜보기"} ${x.rank}위</span>${x.flowOk ? '<span class="fbadge link">🔗 체결 수급</span>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(EX_LABEL[x.mkt])}${(x.also || []).length ? " · 같이 " + x.also.map(a => EX_LABEL[a.mkt]).join("·") : ""}</span>
+        <span class="f1r">${fmtPrice(x.price, x.mkt)}</span></div>
+      <div class="f2 small"><b>${x.P}선 ${pct(x.gap)}</b>${x.kind === "cross" ? ` · 돌파 ${x.days}봉째 · 돌파 봉 거래량 ${x.volX ? x.volX.toFixed(1) + "배" : "–"}` : ` · ${x.approach.toFixed(1)}%p 다가옴`} · 이평선 기울기 ${pct(x.slope)}
+        · ${x.buyShare == null ? "체결 수급 확인 못 함" : `매수 체결 ${Math.round(x.buyShare * 100)}%${x.oiChg != null ? ` · OI ${pct(x.oiChg)}` : ""}${x.funding != null ? ` · 펀딩 ${(x.funding * 100).toFixed(3)}%` : ""} (${x.flowSrc})`}</div>
+      <div class="f3 s${x.step}">${esc(x.todo || "")}</div>
+      <div class="f4 small">손절 참고 <b>${fmtPrice(x.stop, x.mkt)}</b> (${pct(x.stopPct)}) · 최대 금액 ${size ? `<b>${Math.round(size / 1e4).toLocaleString("ko-KR")}만원</b>${x.step === 2 ? ` (처음 절반 ${Math.round(size / 2e4).toLocaleString("ko-KR")}만원)` : ""}` : "자금 입력"}</div>
+    </div>`;
+  }).join("") : `<div class="empty">${c ? "해당하는 코인이 없어요." : ""}</div>`;
+}
+let sMode = store.get("sMode", "sig");
+function applySMode() {
+  $("#sMode").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.m === sMode));
+  $("#rankWrap").hidden = sMode !== "rank"; $("#sigWrap").hidden = sMode === "rank";
+  if (sMode === "rank") { renderRank(); const c = store.get("rank", null); if (!c || Date.now() - c.at > 60 * 60e3) runRank(); }
+}
+$("#sMode").addEventListener("click", e => { const b = e.target.closest("button[data-m]"); if (!b) return; sMode = b.dataset.m; store.set("sMode", sMode); applySMode(); });
+$("#rkRun").addEventListener("click", () => runRank());
+$("#rkTf").addEventListener("click", e => { const b = e.target.closest("button[data-f]"); if (!b) return; store.set("rankTf", b.dataset.f); renderRank(); });
+$("#rkKind").addEventListener("click", e => { const b = e.target.closest("button[data-f]"); if (!b) return; rkKind = b.dataset.f; $("#rkKind").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); renderRank(); });
+$("#rkLink").addEventListener("change", () => { rkLink = $("#rkLink").checked; renderRank(); });
+$("#rkCap").addEventListener("change", () => { store.set("coinCap", Number($("#rkCap").value) || 0); renderRank(); });
+$("#rkList").addEventListener("click", e => { const r = e.target.closest(".rkrow"); if (!r) return; C.cur = { mkt: r.dataset.m, sym: r.dataset.s, name: r.dataset.n }; C.tf = store.get("rank", {})?.tf || "4h"; store.set("chartCur", C.cur); store.set("chartTf", C.tf); show("chart"); });
+
 $("#fRefresh").addEventListener("click", () => { if (fInv === "ma") loadStockMa(true); else loadFlowPage(true); });
 $("#fInv").addEventListener("click", e => { const b = e.target.closest("button[data-f]"); if (!b) return; fInv = b.dataset.f; $("#fInv").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); renderFlow(store.get("flow", null)); if (fInv === "ma" && relayUrl()) loadStockMa(); });
 $("#fCap").addEventListener("change", () => { store.set("flowCap", Number($("#fCap").value) || 0); renderFlow(store.get("flow", null)); });
