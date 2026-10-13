@@ -201,7 +201,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v8</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v9</small></h1>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
 </header>
@@ -267,7 +267,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
     <details class="fguide"><summary>판단 순서 보기</summary>
       <ol>
         <li><b>⏳ 임박</b> — 이평선 3% 아래에서 다가오는 중. 적어만 두고 봉 마감으로 넘는지 봐요.</li>
-        <li><b>🟣 돌파 첫 봉</b> — 봉 마감으로 200·448선 넘음 + 거래량 평소 1.5배↑ + 이평선 8% 안 + 이평선이 크게 꺾여 내려가지 않음 + <b>바이낸스 매수 체결 50%↑</b> + 선물 미결제약정 크게 안 줄어듦 + 펀딩비 과열 아님. 다음 봉에서 이평선 근처로 눌릴 때 절반.</li>
+        <li><b>🟣 돌파 첫 봉</b> — 봉 마감으로 200·448선 넘음 + 거래량 평소 1.5배↑ + 이평선 8% 안 + 이평선이 크게 꺾여 내려가지 않음 + <b>바이낸스 매수 체결 51%↑</b> + 선물 미결제약정이 크게 줄지도, 급증하지도(+50%↑ ⚠ 선물 과열) 않음 + 펀딩비 과열 아님. 다음 봉에서 이평선 근처로 눌릴 때 절반.</li>
         <li><b>🟣 2~3봉째 유지</b> — 직전 고점 넘을 때 나머지 절반. 봉 마감이 이평선 아래면 정리.</li>
         <li><b>👀 지켜보기</b> — 돌파했지만 조건 부족. 바이낸스에 없는 코인은 체결 수급을 확인 못 해서 🟣가 안 돼요.</li>
         <li><b>금액</b> — 손절 참고까지 빠져도 코인 자금의 1.5%만 잃는 크기. 선물은 레버리지 곱하기 전 실제 노출 금액.</li>
@@ -776,8 +776,8 @@ function stockTodo(x) {
 // ================= 코인 (같은 이평 판정 + 바이낸스 체결 수급) =================
 // 봉은 마감된 것만 넣어야 함(진행 중인 봉 제외). 판정은 stockSignal(k, { minTurn: 0 }) 그대로 씀 — '3거래일'이 '3봉'이 됨
 // 코인 수급(기관·외국인 대신): 바이낸스 체결 데이터
-//  · 매수 체결 비율: 최근 6봉 거래대금 중 시장가 매수 비율 (50%↑ = 사려는 쪽이 더 적극적)
-//  · 선물 미결제약정(OI) 변화: 최근 6봉 동안 늘면 새 돈이 들어오는 중, 크게 줄면 숏 청산으로 오른 것일 수 있음
+//  · 매수 체결 비율: 최근 6봉 거래대금 중 시장가 매수 비율. 여러 봉을 합치면 대부분 49~51%라서 51%↑일 때만 '매수 우세'
+//  · 선물 미결제약정(OI) 변화(최근 6봉): 크게 줄면(-3%↓) 숏 청산으로 오른 것일 수 있고, 너무 급하게 늘면(+50%↑) 레버리지 과열
 //  · 펀딩비 0.1%↑ = 롱 과열
 // 원화 거래소 코인도 바이낸스에 같은 코인이 있으면 그 수급을 같이 봄 (없으면 '확인 못 함' → 🟣 안 됨)
 function coinBuyShare(raw) {
@@ -790,7 +790,7 @@ function coinFlow(x, f) {
   // f: { buyShare, oiChg, funding, src }
   if (!f) return;
   x.buyShare = f.buyShare; x.oiChg = f.oiChg; x.funding = f.funding; x.flowSrc = f.src;
-  x.flowOk = f.buyShare != null && f.buyShare >= 0.5 && !(f.oiChg != null && f.oiChg < -3);
+  x.flowOk = f.buyShare != null && f.buyShare >= 0.51 && !(f.oiChg != null && (f.oiChg < -3 || f.oiChg >= 50));
 }
 function coinGrade(x) {
   const why = [];
@@ -801,7 +801,9 @@ function coinGrade(x) {
     if (x.buyShare == null) why.push('체결 수급 확인 못 함');
     else {
       if (x.buyShare < 0.5) why.push('매도 체결이 더 많음');
+      else if (x.buyShare < 0.51) why.push('매수·매도 체결 팽팽');
       if (x.oiChg != null && x.oiChg < -3) why.push('선물 미결제약정 감소(숏 청산성 상승일 수 있음)');
+      if (x.oiChg != null && x.oiChg >= 50) why.push('⚠ 선물 과열(미결제약정 +' + Math.round(x.oiChg) + '%)');
     }
     if (x.funding != null && x.funding >= 0.001) why.push('펀딩비 과열');
     x.buy = !why.length;
@@ -812,8 +814,8 @@ function coinGrade(x) {
     + (x.gap >= 0 && x.gap <= 4 ? 8 : x.gap > 4 && x.gap <= 8 ? 4 : x.gap < 0 ? 2 : -5)
     + (x.slope >= 0 ? 6 : x.slope >= -3 ? 2 : -4)
     + (x.below60 >= 0.7 ? 5 : 0)
-    + (x.buyShare == null ? 0 : x.buyShare >= 0.55 ? 8 : x.buyShare >= 0.5 ? 4 : -4)
-    + (x.oiChg == null ? 0 : x.oiChg > 3 ? 4 : x.oiChg < -3 ? -4 : 0)
+    + (x.buyShare == null ? 0 : x.buyShare >= 0.53 ? 8 : x.buyShare >= 0.51 ? 4 : x.buyShare >= 0.5 ? 0 : -4)
+    + (x.oiChg == null ? 0 : x.oiChg >= 50 ? -6 : x.oiChg > 3 ? 4 : x.oiChg < -3 ? -4 : 0)
     + (x.funding != null && x.funding >= 0.001 ? -5 : 0);
   x.score = Math.round(s * 10) / 10;
   x.step = x.kind === 'near' ? 1 : x.buy ? (x.days >= 2 ? 3 : 2) : 0;
@@ -1846,7 +1848,7 @@ function renderRank() {
       <div class="f1"><span class="fbadge ${x.buy ? "buy" : ""}">${x.buy ? "🟣 매수 고려" : x.kind === "near" ? "⏳ 임박" : "👀 지켜보기"} ${x.rank}위</span>${x.flowOk ? '<span class="fbadge link">🔗 체결 수급</span>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(EX_LABEL[x.mkt])}${(x.also || []).length ? " · 같이 " + x.also.map(a => EX_LABEL[a.mkt]).join("·") : ""}</span>
         <span class="f1r">${fmtPrice(x.price, x.mkt)}</span></div>
       <div class="f2 small"><b>${x.P}선 ${pct(x.gap)}</b>${x.kind === "cross" ? ` · 돌파 ${x.days}봉째 · 돌파 봉 거래량 ${x.volX ? x.volX.toFixed(1) + "배" : "–"}` : ` · ${x.approach.toFixed(1)}%p 다가옴`} · 이평선 기울기 ${pct(x.slope)}
-        · ${x.buyShare == null ? "체결 수급 확인 못 함" : `매수 체결 ${Math.round(x.buyShare * 100)}%${x.oiChg != null ? ` · OI ${pct(x.oiChg)}` : ""}${x.funding != null ? ` · 펀딩 ${(x.funding * 100).toFixed(3)}%` : ""} (${x.flowSrc})`}</div>
+        · ${x.buyShare == null ? "체결 수급 확인 못 함" : `매수 체결 ${(x.buyShare * 100).toFixed(1)}%${x.oiChg != null ? ` · ${x.oiChg >= 50 ? "⚠ " : ""}OI ${pct(x.oiChg)}` : ""}${x.funding != null ? ` · 펀딩 ${(x.funding * 100).toFixed(3)}%` : ""} (${x.flowSrc})`}</div>
       <div class="f3 s${x.step}">${esc(x.todo || "")}</div>
       <div class="f4 small">손절 참고 <b>${fmtPrice(x.stop, x.mkt)}</b> (${pct(x.stopPct)}) · 최대 금액 ${size ? `<b>${Math.round(size / 1e4).toLocaleString("ko-KR")}만원</b>${x.step === 2 ? ` (처음 절반 ${Math.round(size / 2e4).toLocaleString("ko-KR")}만원)` : ""}` : "자금 입력"}</div>
     </div>`;
