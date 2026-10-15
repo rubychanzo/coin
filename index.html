@@ -223,7 +223,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v12</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v13</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -306,7 +306,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
   <div class="scanbox">
     <div style="display:flex;gap:8px;align-items:center">
       <button class="primary" id="scanBtn" style="flex:1">지금 스캔</button>
-      <div class="seg" id="sDir"><button data-d="up">▲ 상향</button><button data-d="down">▼ 하향</button></div>
+      <div class="seg" id="sDir"><button data-d="up">▲ 상향</button><button data-d="down">▼ 하향</button><button data-d="engulf">🕯️ 장악</button></div>
     </div>
     <div style="display:flex;justify-content:flex-end"><button id="sClear" class="small">보이는 신호 지우기</button></div>
     <div class="prog" hidden id="scanProg"><i></i></div>
@@ -1575,6 +1575,15 @@ async function scan() {
           if (f.dir === "up") { const sc = scoreUp(f, ctx); f.score = sc.score; f.scoreMax = sc.max; f.checks = sc.checks; f.star = sc.score >= Math.min(Number(S.starMin), sc.max); }
           sigs.push(f);
         }
+        // 🕯️ 꼬리 음봉 + 장악 양봉 (1시간·4시간·일봉 · 휴대폰은 열 때만 보니까 최근 하루치 마감봉을 훑음)
+        if (tf !== "5m") {
+          const back = tf === "1h" ? 24 : tf === "4h" ? 6 : 2;
+          for (let j = 0; j < back; j++) {
+            const part = j ? c.slice(0, c.length - j) : c;
+            for (const e of detectEngulf(part, { lb: 20 }))
+              sigs.push({ ...e, dir: "engulf", mkt: it.mkt, sym: it.sym, name: it.name, tf, watch: it.watch, held: it.held, liquid: ctx.liquid });
+          }
+        }
       }
       const hb = Number(S.holdBars) || 0;
       if (hb && sigs.some(f => f.dir === "up")) {
@@ -1636,6 +1645,7 @@ function renderSignals() {
   sc.signals = sc.signals.filter(x => !gone.has(sid(x)));
   // 하향 이탈은 보유·관심 코인만 (전체 보기를 켜면 다)
   let list = sc.signals.filter(x => x.dir === scanDir && (x.dir !== "down" || downAll || x.held || x.watch));
+  if (scanDir === "engulf") list.sort((a, b) => (b.good ? 1 : 0) - (a.good ? 1 : 0) || ({ "1d": 0, "4h": 1, "1h": 2 }[a.tf] - { "1d": 0, "4h": 1, "1h": 2 }[b.tf]) || b.t - a.t);
   const rg = store.get("btcRegime", null);
   if (scanDir === "up" && rg?.down) { const rank = { "1d": 0, "4h": 1, "1h": 2, "5m": 3 }; list.sort((a, b) => (rank[a.tf] ?? 3) - (rank[b.tf] ?? 3)); }
   list.sort((a, b) => (b.rebreak ? 1 : 0) - (a.rebreak ? 1 : 0));
@@ -1649,6 +1659,25 @@ function renderSignals() {
       <span class="p num">${fmtPrice(x.price, x.mkt)}</span>
       <div class="small">일봉 ${x.rebreak.vol}배 돌파(${x.rebreak.daysAgo}일 전) → ${x.rebreak.fromHigh}% 눌림 → 재돌파 · 거래량 ${x.volRatio.toFixed(1)}배</div>
     </div>`).join("") : "";
+  if (scanDir === "engulf") {
+    $("#sList").innerHTML = `<div class="downbar">🕯️ 음봉이 아래꼬리를 길게 달고 바로 다음 양봉이 그 음봉보다 크게 덮은 모양 (최근 하루 · 1시간·4시간·일봉). ⭐ = 하락 뒤이거나 200·448선 근처에서 나온 것. 아직 검증 중인 신호예요.</div>` +
+      (list.length ? list.map(x => `
+      <div class="scard su ${x.good ? "star" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}" data-id="${esc(sid(x))}">
+        <button class="sdel" aria-label="지우기">✕</button>
+        <div class="s1">${x.good ? '<b style="color:var(--star)">⭐</b>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.sym)} · ${EX_LABEL[x.mkt]}</span><span class="p num">${fmtPrice(x.price, x.mkt)}</span></div>
+        <div class="s2">
+          ${x.good ? `<span class="pill" style="background:#2b8a3e;color:#fff">⭐ 좋은 자리${x.nearMa ? ` · ${x.nearMa}선 지지` : ""}${x.afterDrop ? " · 하락 뒤" : ""}</span>` : ""}
+          ${x.held ? '<span class="pill" style="background:#7048e8;color:#fff">보유</span>' : x.watch ? '<span class="pill" style="color:#7048e8">관심</span>' : ""}
+          ${rankChip(x)}
+          <span class="pill conf">${TF_LABEL[x.tf]}</span>
+          <span>꼬리 ${x.tailX.toFixed(1)}배 → 장악 몸통 ${x.bodyX.toFixed(1)}배</span>
+          <span class="dt">거래량 ${x.volRatio.toFixed(1)}배</span>
+          <span>손절 참고 ${fmtPrice(x.stop, x.mkt)} (${x.stopPct.toFixed(1)}%)</span>
+          <span>· ${kst(x.t, x.tf)}봉</span>
+        </div>
+      </div>`).join("") : `<div class="empty">최근 하루 안에 꼬리+장악 모양이 나온 코인이 없어요. (스캔할 때 1시간·4시간·일봉 중 켜 둔 봉만 봐요)</div>`);
+    return;
+  }
   $("#sList").innerHTML = (scanDir === "down" ? `<div class="downbar">▼ 하향 이탈은 <b>보유·관심 코인</b>만 보여요 (보유 코인이 이평선 아래로 마감 = 정리·축소 검토) <label><input type="checkbox" id="sDownAll" style="width:auto;margin:0" ${downAll ? "checked" : ""}> 전체 보기</label></div>` : "") + (list.length ? list.map(x => `
     <div class="scard ${x.dir === "up" ? "su" : "sd"} ${x.dir === "down" && x.held ? "holdwarn" : ""} ${x.star ? "star" : ""} ${x.rebreak ? "rebreak" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}" data-id="${esc(sid(x))}">
       <button class="sdel" aria-label="지우기">✕</button>
@@ -1679,8 +1708,8 @@ function rankChip(x) {
 function sigChips(base) {
   const sc = store.get("scan", null); if (!sc) return "";
   const TFS = { "5m": "5분", "1h": "1h", "4h": "4h", "1d": "일봉" }, seen = new Set();
-  return sc.signals.filter(y => y.dir === "up" && Date.now() - y.t < 3 * 86400e3 && coinKey(y) === String(base).toUpperCase())
-    .sort((a, b) => b.t - a.t).map(y => { const l = `▲${TFS[y.tf]} ${y.period}`; if (seen.has(l)) return ""; seen.add(l); return `<span class="sigchip">${l}</span>`; }).join("");
+  return sc.signals.filter(y => ((y.dir === "up" && Date.now() - y.t < 3 * 86400e3) || (y.dir === "engulf" && Date.now() - y.t < 2 * 86400e3)) && coinKey(y) === String(base).toUpperCase())
+    .sort((a, b) => b.t - a.t).map(y => { const l = y.dir === "engulf" ? `🕯️${TFS[y.tf]}${y.good ? "⭐" : ""}` : `▲${TFS[y.tf]} ${y.period}`; if (seen.has(l)) return ""; seen.add(l); return `<span class="sigchip">${l}</span>`; }).join("");
 }
 $("#sList").addEventListener("change", e => { if (e.target.id !== "sDownAll") return; downAll = e.target.checked; store.set("downAll", downAll); renderSignals(); });
 $("#scanBtn").addEventListener("click", scan);
@@ -1918,8 +1947,12 @@ function renderNow() {
   const byTf = store.get("rankByTf", {}), sc = store.get("scan", null), now = Date.now();
   const fold = store.get("nowFold", false);
   const recent = new Map();
-  for (const y of sc?.signals || []) if (y.dir === "up" && now - y.t < 3 * 86400e3) { const k = coinKey(y); if (!recent.has(k)) recent.set(k, []); recent.get(k).push(y); }
-  const sigText = k => { const g = recent.get(k); if (!g) return ""; const rk = t => ({ "1d": 0, "4h": 1, "1h": 2, "5m": 3 }[t] ?? 3); const u = g.sort((a, b) => rk(a.tf) - rk(b.tf))[0]; return `이평 신호에도 ${NOW_TF[u.tf]} ${u.period}선 돌파가 떴어요`; };
+  for (const y of sc?.signals || []) if ((y.dir === "up" && now - y.t < 3 * 86400e3) || (y.dir === "engulf" && now - y.t < 2 * 86400e3)) { const k = coinKey(y); if (!recent.has(k)) recent.set(k, []); recent.get(k).push(y); }
+  const sigText = k => {
+    const g = recent.get(k); if (!g) return ""; const rk = t => ({ "1d": 0, "4h": 1, "1h": 2, "5m": 3 }[t] ?? 3);
+    const u = g.filter(y => y.dir === "up").sort((a, b) => rk(a.tf) - rk(b.tf))[0], e = g.filter(y => y.dir === "engulf").sort((a, b) => (b.good ? 1 : 0) - (a.good ? 1 : 0) || rk(a.tf) - rk(b.tf))[0];
+    return [u ? `이평 신호에도 ${NOW_TF[u.tf]} ${u.period}선 돌파가 떴어요` : "", e ? `${NOW_TF[e.tf]} 반등 모양(꼬리+장악)${e.good ? "이 좋은 자리에서" : "도"} 나왔어요` : ""].filter(Boolean).join(" · ");
+  };
   const row = (cls, x, title, sub) => `<div class="nrow ${cls}" data-m="${esc(x.mkt)}" data-s="${esc(x.sym)}" data-n="${esc(x.name)}">${title}${sub ? `<div class="ns">${sub}</div>` : ""}</div>`;
   const bb = new Map();
   for (const t of ["1d", "4h"]) for (const x of (byTf[t]?.items || []).filter(y => y.buy)) { const k = String(x.base).toUpperCase(); if (!bb.has(k)) bb.set(k, { x, t, both: false }); else bb.get(k).both = true; }
