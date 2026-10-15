@@ -85,6 +85,7 @@ body.simple .dt { display: none !important; }
 .nowbox .ns { font-size: 12.5px; margin-top: 2px; color: #6d28d9; font-weight: 600; }
 .nowbox .nempty { color: var(--muted); font-size: 12.5px; padding: 2px 2px 4px; }
 .nowbox .ntf { font-size: 11px; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, #64748b 20%, var(--bg)); }
+.nowbox .nfut { font-size: 11px; padding: 0 5px; border-radius: 4px; background: #e8590c; color: #fff; font-weight: 700; }
 .nowbox .nboth { font-size: 11px; padding: 0 5px; border-radius: 4px; background: #7c3aed; color: #fff; font-weight: 700; }
 .nowbox .nreg { margin: 6px 0 2px; padding: 5px 8px; border-radius: 8px; font-size: 12.5px; background: color-mix(in srgb, #e03131 12%, var(--bg)); }
 @media (prefers-color-scheme: dark) { .nowbox .ns { color: #c4b5fd; } }
@@ -223,7 +224,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v13</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v14</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -928,6 +929,25 @@ function coinBase(mkt, sym, name) {
   if (mkt === 'coin' || mkt === 'upbit') return String(sym).toUpperCase();
   if (mkt === 'binance') return String(sym).replace(/USDT$/, '').toUpperCase();
   return String(name || sym).replace(/USDT$/, '').replace(/^1000+/, '').toUpperCase();
+}
+
+// 코인 손절 참고를 변동성에 맞춤: 최근 14봉 평균 변동폭(ATR)의 2배 아래 vs 이평선 2% 아래 중 더 넓은 쪽 (최소 -3%, 최대 -25%)
+// 많이 움직이는 코인은 손절이 넓어지고 그만큼 '최대 금액'이 작아져서, 손절 나도 잃는 돈은 같게 맞춰짐
+function coinVolStop(x, k) {
+  const n = k.length; if (n < 20) return;
+  let tr = 0;
+  for (let i = n - 14; i < n; i++) { const c = k[i], p = k[i - 1]; tr += Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c)); }
+  const atr = tr / 14, price = x.price;
+  x.atrPct = atr / price * 100;
+  let stop = Math.min(x.ma * 0.98, price - 2 * atr);
+  stop = Math.min(stop, price * 0.97);
+  stop = Math.max(stop, price * 0.75);
+  x.stop = stop; x.stopPct = (stop / price - 1) * 100;
+}
+// 선물: 손절에 닿기 전에 청산되지 않는 최대 레버리지 (청산은 대략 -1/배수, 여유 25%)
+function coinMaxLev(stopPct) {
+  const s = Math.abs(stopPct || 0); if (!s) return null;
+  return Math.max(1, Math.min(20, Math.floor(100 / (s * 1.25))));
 }
 
 function confirmUps(sigs, c5, c5Closed, holdBars, keepEarly = false) {
@@ -1959,7 +1979,7 @@ function renderNow() {
   const buys = [...bb.values()].sort((a, b) => (b.both ? 1 : 0) - (a.both ? 1 : 0) || (a.t === "1d" ? 0 : 1) - (b.t === "1d" ? 0 : 1) || (recent.has(String(b.x.base).toUpperCase()) ? 1 : 0) - (recent.has(String(a.x.base).toUpperCase()) ? 1 : 0) || a.x.rank - b.x.rank).slice(0, 5);
   const have = byTf["1d"] || byTf["4h"];
   const buyHtml = !have ? `<div class="nempty">아직 계산 전이에요 · '새로 계산'을 누르면 일봉·4시간봉 순위를 계산해요 (각 2~4분)</div>`
-    : buys.length ? buys.map(({ x, t, both }) => row("buy", x, `${both ? '<span class="nboth">일봉·4시간봉 둘 다</span> ' : `<span class="ntf">${NOW_TF[t]}</span> `}<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small><br><span class="nwhy">${esc([`${NOW_TF[t]} ${x.P}선을 거래량 ${x.volX ? x.volX.toFixed(1) : "–"}배로 넘은 지 ${x.days}봉째`, x.flowOk ? "바이낸스에서 사는 쪽이 더 많아요" : "", sigText(String(x.base).toUpperCase())].filter(Boolean).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")}`)).join("")
+    : buys.length ? buys.map(({ x, t, both }) => row("buy", x, `${both ? '<span class="nboth">일봉·4시간봉 둘 다</span> ' : `<span class="ntf">${NOW_TF[t]}</span> `}${x.mkt === "binancef" ? '<span class="nfut">⚡선물</span> ' : ""}<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small><br><span class="nwhy">${esc([`${NOW_TF[t]} ${x.P}선을 거래량 ${x.volX ? x.volX.toFixed(1) : "–"}배로 넘은 지 ${x.days}봉째`, x.flowOk ? "바이낸스에서 사는 쪽이 더 많아요" : "", sigText(String(x.base).toUpperCase())].filter(Boolean).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")} · 손절 참고 ${x.stopPct.toFixed(1)}%${x.mkt === "binancef" ? ` · ⚡ 최대 ${x.maxLev || "?"}배까지` : ""}`)).join("")
     : `<div class="nempty">일봉·4시간봉 모두 조건이 다 맞는 코인이 없어요. 억지로 사지 않아도 되는 때예요.</div>`;
   const warnBy = new Map(), rk = t => ({ "1d": 0, "4h": 1, "1h": 2, "5m": 3 }[t] ?? 3);
   for (const y of sc?.signals || []) if (y.dir === "down" && y.held && now - y.t < 2 * 86400e3) { const k = y.mkt + "|" + y.sym, o = warnBy.get(k); if (!o || rk(y.tf) < rk(o.tf)) warnBy.set(k, y); }
@@ -2022,7 +2042,7 @@ async function runRank(tfSide, onProg) {
       try {
         const { candles: k, raw } = await rkCandles(it.mkt, it.sym, tf);
         const r = stockSignal(k, { minTurn: 0 });
-        if (r) { Object.assign(r, { mkt: it.mkt, sym: it.sym, name: it.name, base: coinBase(it.mkt, it.sym, it.name) }); if (raw) r._raw = raw; cand.push(r); }
+        if (r) { coinVolStop(r, k); if (it.mkt === "binancef") r.maxLev = coinMaxLev(r.stopPct); Object.assign(r, { mkt: it.mkt, sym: it.sym, name: it.name, base: coinBase(it.mkt, it.sym, it.name) }); if (raw) r._raw = raw; cand.push(r); }
       } catch (_) { fails[it.mkt] = (fails[it.mkt] || 0) + 1; }
       done++; if (done % 5 === 0) prog(done, uni.length);
     };
@@ -2048,7 +2068,7 @@ async function runRank(tfSide, onProg) {
     const tierOf = x => x.buy ? 3 : x.kind === "cross" ? 2 : 1;
     const g = new Map(); for (const x of cand) { if (!g.has(x.base)) g.set(x.base, []); g.get(x.base).push(x); }
     const items = [];
-    for (const arr of g.values()) { arr.sort((a, b) => tierOf(b) - tierOf(a) || b.score - a.score); const top = arr[0]; top.also = arr.slice(1).map(y => ({ mkt: y.mkt, kind: y.kind, buy: y.buy })); items.push(top); }
+    for (const arr of g.values()) { const mk = x => x.mkt === "binancef" ? 2 : x.mkt === "binancea" ? 1 : 0; arr.sort((a, b) => tierOf(b) - tierOf(a) || mk(a) - mk(b) || b.score - a.score); const top = arr[0]; top.also = arr.slice(1).map(y => ({ mkt: y.mkt, kind: y.kind, buy: y.buy })); items.push(top); }
     items.sort((a, b) => tierOf(b) - tierOf(a) || b.score - a.score);
     items.forEach((x, i) => { x.rank = i + 1; });
     const failTxt = Object.entries(fails).map(([m, n]) => `${EX_LABEL[m]} ${n}개 못 받음`);
@@ -2076,7 +2096,8 @@ function renderRank() {
         · <span class="sm">${x.buyShare == null ? "체결 수급 확인 못 함" : x.flowOk ? "🔗 사는 쪽 우세" : x.buyShare < 0.5 ? "파는 쪽 우세" : x.oiChg >= 50 ? "⚠ 선물 과열" : "팽팽"}</span><span class="dt">${x.buyShare == null ? "" : ` (매수 체결 ${(x.buyShare * 100).toFixed(1)}%${x.oiChg != null ? ` · ${x.oiChg >= 50 ? "⚠ " : ""}OI ${pct(x.oiChg)}` : ""}${x.funding != null ? ` · 펀딩 ${(x.funding * 100).toFixed(3)}%` : ""} · ${x.flowSrc})`}</span></div>
       ${sigChips(x.base) ? `<div class="small" style="margin-top:3px">최근 신호 ${sigChips(x.base)}</div>` : ""}
       <div class="f3 s${x.step}">${esc(x.todo || "")}</div>
-      <div class="f4 small">손절 참고 <b>${fmtPrice(x.stop, x.mkt)}</b> (${pct(x.stopPct)}) · 최대 금액 ${size ? `<b>${Math.round(size / 1e4).toLocaleString("ko-KR")}만원</b>${x.step === 2 ? ` (처음 절반 ${Math.round(size / 2e4).toLocaleString("ko-KR")}만원)` : ""}` : "자금 입력"}</div>
+      <div class="f4 small">손절 참고 <b>${fmtPrice(x.stop, x.mkt)}</b> (${pct(x.stopPct)}${x.atrPct ? ` · 평소 한 봉 ${x.atrPct.toFixed(1)}% 움직임` : ""}) · 최대 금액 ${size ? `<b>${Math.round(size / 1e4).toLocaleString("ko-KR")}만원</b>${x.step === 2 ? ` (처음 절반 ${Math.round(size / 2e4).toLocaleString("ko-KR")}만원)` : ""}` : "자금 입력"}</div>
+      ${x.mkt === "binancef" && x.maxLev ? `<div class="f4 small down"><b>⚡ 선물이면 최대 ${x.maxLev}배까지</b> — 그 이상은 손절 전에 청산될 수 있어요${size ? ` · 예: ${Math.min(3, x.maxLev)}배면 증거금 ${Math.round(size / Math.min(3, x.maxLev) / 1e4).toLocaleString("ko-KR")}만원 (최대 금액은 노출 금액 기준)` : ""}</div>` : ""}
     </div>`;
   }).join("") : `<div class="empty">${c ? "해당하는 코인이 없어요." : ""}</div>`;
 }
