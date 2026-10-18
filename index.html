@@ -86,6 +86,7 @@ body.simple .dt { display: none !important; }
 .nowbox .nempty { color: var(--muted); font-size: 12.5px; padding: 2px 2px 4px; }
 .nowbox .ntf { font-size: 11px; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, #64748b 20%, var(--bg)); }
 .nowbox .nfut { font-size: 11px; padding: 0 5px; border-radius: 4px; background: #e8590c; color: #fff; font-weight: 700; }
+.nowbox .nhow { margin: 4px 0; font-size: 12px; } .nowbox .nhow ol { margin: 4px 0 0 18px; padding: 0; line-height: 1.6; }
 .nowbox .nboth { font-size: 11px; padding: 0 5px; border-radius: 4px; background: #7c3aed; color: #fff; font-weight: 700; }
 .nowbox .nreg { margin: 6px 0 2px; padding: 5px 8px; border-radius: 8px; font-size: 12.5px; background: color-mix(in srgb, #e03131 12%, var(--bg)); }
 @media (prefers-color-scheme: dark) { .nowbox .ns { color: #c4b5fd; } }
@@ -224,7 +225,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v16</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v18</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -933,8 +934,10 @@ function coinTodo(x, tfLabel) {
   const won = x.mkt === 'coin' || x.mkt === 'upbit';
   const px = function (v) { const t = v >= 100 ? Math.round(v).toLocaleString('ko-KR') : v >= 1 ? v.toFixed(2) : Number(v.toPrecision(4)).toString(); return won ? t + '원' : '$' + t; };
   if (x.kind === 'near') return '① 적어 두기 → ' + bar + ' 마감이 ' + x.P + '선을 넘는지 확인 (지금 ' + x.gap.toFixed(1) + '%)';
-  if (x.step === 2) return '② 🟣 돌파 첫 ' + bar + ' → 다음 봉에서 ' + x.P + '선(' + px(x.ma) + ') 근처로 눌릴 때 절반 (바로 +5%↑ 뛰면 대기) · 정리: 고점에서 -10% 또는 ' + bar + ' 마감이 선 아래';
-  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → ' + bar + '이 직전 고점(' + px(x.hi20) + ') 위에서 마감하면 나머지 절반 · 아직 안 샀다면 ' + x.P + '선(' + px(x.ma) + ') 근처 눌림에 절반 · 정리: 산 뒤 고점에서 -10% 내려오거나 ' + bar + ' 마감이 ' + x.P + '선 아래면 (과거 시험에서 이 방식이 가장 나았음)';
+  // 10/19 과거 시험(어디서 살지): 선까지 눌림을 기다리면 28%는 못 사서 전체 결과가 줄었고, 종가와 선의 중간까지 눌릴 때는 87% 살 수 있고 산 경우 조금 나았음
+  var mid = (x.price + x.ma) / 2;
+  if (x.step === 2) return '② 🟣 돌파 ' + bar + ' 마감 → 다음 봉 시가 근처에서 절반 (그사이 이미 +5%↑ 뛰었으면 건너뛰고 아래 중간 가격만) · 나머지 절반은 5봉 안에 ' + px(mid) + '(종가와 ' + x.P + '선 중간)까지 눌리면 (안 눌리면 절반만) · 정리: 산 뒤 고점에서 -10% 또는 ' + bar + ' 마감이 선 아래';
+  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → 아직 안 샀다면 ' + px(mid) + '(지금 가격과 ' + x.P + '선 중간) 근처 눌림에 절반 · ' + bar + '이 직전 고점(' + px(x.hi20) + ') 위에서 마감하면 나머지 절반 · 정리: 산 뒤 고점에서 -10% 내려오거나 ' + bar + ' 마감이 ' + x.P + '선 아래면 (과거 시험에서 이 방식이 가장 나았음)';
   return '지켜보기 → 돌파했지만 ' + (x.why.join(', ') || '조건 부족');
 }
 // 거래소가 달라도 같은 코인끼리 묶는 이름 (선물 1000PEPE → PEPE)
@@ -2051,7 +2054,7 @@ function renderNow() {
   const hm = t => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   box.innerHTML = `<div class="nhead"><b>지금 볼 것</b><button id="nowRun">새로 계산</button><button id="nowFold">${fold ? "펴기" : "접기"}</button></div>
     <div class="muted small" id="nowProg">${["1d", "4h"].map(t => byTf[t] ? `${NOW_TF[t]} ${hm(byTf[t].at)}` : `${NOW_TF[t]} 계산 전`).join(" · ")} 기준${nowRunning ? " · 계산 중…" : ""}</div>` +
-    (fold ? "" : reg + `<div class="nsec">🟣 살 만한 후보</div>${buyHtml}<div class="nsec">⚠ 보유 코인 주의</div>${warnHtml}<div class="nsec">👀 지켜볼 코인</div>${watchHtml}`);
+    (fold ? "" : reg + `<div class="nsec">🟣 살 만한 후보</div>${buyHtml}<details class="nhow"><summary>🕘 언제 사고 언제 파나 (과거 시험 기준)</summary><ol><li><b>뜨는 때</b> — 일봉은 매일 오전 9시 마감, 그 뒤 순위 계산</li><li><b>첫 절반</b> — 9시 이후 새 일봉 초반 (이미 +5%↑면 건너뛰기)</li><li><b>나머지 절반</b> — 5일 안에 할 일의 '중간 가격'까지 내려오면</li><li><b>산 뒤</b> — 매일 9시 마감 뒤: 일봉이 선 아래 · 고점에서 -10% · 손절 참고 아래 → 정리</li></ol></details><div class="nsec">⚠ 보유 코인 주의</div>${warnHtml}<div class="nsec">👀 지켜볼 코인</div>${watchHtml}`);
 }
 $("#nowBox").addEventListener("click", e => {
   if (e.target.id === "nowFold") { store.set("nowFold", !store.get("nowFold", false)); renderNow(); return; }
