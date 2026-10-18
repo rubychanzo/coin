@@ -224,7 +224,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v14</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v15</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -887,41 +887,54 @@ function coinFlow(x, f) {
   x.buyShare = f.buyShare; x.oiChg = f.oiChg; x.funding = f.funding; x.flowSrc = f.src;
   x.flowOk = f.buyShare != null && f.buyShare >= 0.51 && !(f.oiChg != null && (f.oiChg < -3 || f.oiChg >= 50));
 }
+// 🟣 기준 (10/18 성적표 반영): 바이낸스 체결 비율은 성적이 오히려 나빠서 매수 조건에서 뺌 → 참고만.
+//  대신 '최근 20봉 동안 비트코인보다 강한가'(rsBtc > 0)를 봄. 비트코인 4시간봉이 200선 아래(btcDown)면 🟣 안 함(쉬는 때).
+//  선물 과열(미결제약정 +50%↑)·펀딩비 과열은 위험 표시라 그대로 막음.
 function coinGrade(x) {
   const why = [];
   if (x.kind === 'cross') {
+    // 10/19 과거 시험(150코인·일봉 5.5년): '거래량 1.5배↑ + 비트코인보다 강함'이 가장 나았고,
+    // 이평선 8% 안·기울기 조건을 더하면 오히려 줄었음 → 그 둘은 점수에만 반영
     if (!(x.volX >= 1.5)) why.push('돌파 거래량 약함');
-    if (x.gap > 8) why.push('이평선에서 너무 멀어짐');
-    if (x.slope < -3) why.push('이평선이 내려가는 중');
-    if (x.buyShare == null) why.push('체결 수급 확인 못 함');
-    else {
-      if (x.buyShare < 0.5) why.push('매도 체결이 더 많음');
-      else if (x.buyShare < 0.51) why.push('매수·매도 체결 팽팽');
-      if (x.oiChg != null && x.oiChg < -3) why.push('선물 미결제약정 감소(숏 청산성 상승일 수 있음)');
-      if (x.oiChg != null && x.oiChg >= 50) why.push('⚠ 선물 과열(미결제약정 +' + Math.round(x.oiChg) + '%)');
-    }
+    if (x.base === 'BTC') { /* 비트코인 자신은 비교 안 함 */ }
+    else if (x.rsBtc == null) why.push('비트코인 대비 강도 확인 못 함');
+    else if (x.rsBtc <= 0) why.push('최근 20봉 비트코인보다 약함');
+    if (x.oiChg != null && x.oiChg >= 50) why.push('⚠ 선물 과열(미결제약정 +' + Math.round(x.oiChg) + '%)');
     if (x.funding != null && x.funding >= 0.001) why.push('펀딩비 과열');
+    if (x.btcDown) why.push('비트코인 하락 추세(200선 아래)라 쉬는 때');
     x.buy = !why.length;
   } else { x.buy = false; why.push('아직 돌파 전'); }
+  x.rsOk = x.base === 'BTC' || (x.rsBtc != null && x.rsBtc > 0);
   x.why = why;
   let s = (x.kind === 'cross' ? 20 : 5) + (x.P === 448 ? 4 : 0)
     + Math.min(x.volX || 0, 5) * 4
     + (x.gap >= 0 && x.gap <= 4 ? 8 : x.gap > 4 && x.gap <= 8 ? 4 : x.gap < 0 ? 2 : -5)
     + (x.slope >= 0 ? 6 : x.slope >= -3 ? 2 : -4)
-    + (x.below60 >= 0.7 ? 5 : 0)
-    + (x.buyShare == null ? 0 : x.buyShare >= 0.53 ? 8 : x.buyShare >= 0.51 ? 4 : x.buyShare >= 0.5 ? 0 : -4)
-    + (x.oiChg == null ? 0 : x.oiChg >= 50 ? -6 : x.oiChg > 3 ? 4 : x.oiChg < -3 ? -4 : 0)
+    + (x.below60 >= 0.7 ? 8 : 0)
+    + (x.rsBtc == null ? 0 : x.rsBtc >= 5 ? 8 : x.rsBtc > 0 ? 4 : -4)
+    + (x.buyShare == null ? 0 : x.buyShare >= 0.53 ? 2 : x.buyShare < 0.5 ? -2 : 0)
+    + (x.oiChg == null ? 0 : x.oiChg >= 50 ? -6 : 0)
     + (x.funding != null && x.funding >= 0.001 ? -5 : 0);
   x.score = Math.round(s * 10) / 10;
   x.step = x.kind === 'near' ? 1 : x.buy ? (x.days >= 2 ? 3 : 2) : 0;
+}
+// 최근 n봉 수익률 − 같은 기간 비트코인 수익률 (같은 봉 시각 기준)
+function coinRsBtc(k, btc, n) {
+  n = n || 20;
+  if (!btc || btc.length < n + 1 || k.length < n + 1) return null;
+  const t1 = k[k.length - 1].t, t0 = k[k.length - 1 - n].t;
+  const at = function (t) { for (let i = btc.length - 1; i >= 0; i--) if (btc[i].t <= t) return btc[i].c; return null; };
+  const b1 = at(t1), b0 = at(t0);
+  if (!b1 || !b0) return null;
+  return ((k[k.length - 1].c / k[k.length - 1 - n].c) - (b1 / b0)) * 100;
 }
 function coinTodo(x, tfLabel) {
   const bar = tfLabel || '봉';
   const won = x.mkt === 'coin' || x.mkt === 'upbit';
   const px = function (v) { const t = v >= 100 ? Math.round(v).toLocaleString('ko-KR') : v >= 1 ? v.toFixed(2) : Number(v.toPrecision(4)).toString(); return won ? t + '원' : '$' + t; };
   if (x.kind === 'near') return '① 적어 두기 → ' + bar + ' 마감이 ' + x.P + '선을 넘는지 확인 (지금 ' + x.gap.toFixed(1) + '%)';
-  if (x.step === 2) return '② 🟣 돌파 첫 ' + bar + ' → 다음 봉에서 ' + x.P + '선(' + px(x.ma) + ') 근처로 눌릴 때 절반 (바로 +5%↑ 뛰면 대기)';
-  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → ' + bar + '이 직전 고점(' + px(x.hi20) + ') 위에서 마감하면 나머지 절반 · 아직 안 샀다면 ' + x.P + '선(' + px(x.ma) + ') 근처 눌림에 절반 · ' + bar + ' 마감이 ' + x.P + '선 아래면 전부 정리';
+  if (x.step === 2) return '② 🟣 돌파 첫 ' + bar + ' → 다음 봉에서 ' + x.P + '선(' + px(x.ma) + ') 근처로 눌릴 때 절반 (바로 +5%↑ 뛰면 대기) · 정리: 고점에서 -10% 또는 ' + bar + ' 마감이 선 아래';
+  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → ' + bar + '이 직전 고점(' + px(x.hi20) + ') 위에서 마감하면 나머지 절반 · 아직 안 샀다면 ' + x.P + '선(' + px(x.ma) + ') 근처 눌림에 절반 · 정리: 산 뒤 고점에서 -10% 내려오거나 ' + bar + ' 마감이 ' + x.P + '선 아래면 (과거 시험에서 이 방식이 가장 나았음)';
   return '지켜보기 → 돌파했지만 ' + (x.why.join(', ') || '조건 부족');
 }
 // 거래소가 달라도 같은 코인끼리 묶는 이름 (선물 1000PEPE → PEPE)
@@ -947,7 +960,50 @@ function coinVolStop(x, k) {
 // 선물: 손절에 닿기 전에 청산되지 않는 최대 레버리지 (청산은 대략 -1/배수, 여유 25%)
 function coinMaxLev(stopPct) {
   const s = Math.abs(stopPct || 0); if (!s) return null;
-  return Math.max(1, Math.min(20, Math.floor(100 / (s * 1.25))));
+  return Math.max(1, Math.min(10, Math.floor(100 / (s * 1.25))));
+}
+
+// ================= 미국 주식 (같은 이평 판정, 수급 대신 지수 대비 강도·오른 날 거래량·실적 발표일) =================
+// 미국은 기관·외국인 순매수를 매일 공개하지 않아서 대신 봄:
+//  · 지수 대비 강도(rs20): 최근 20거래일 수익률 − S&P500(SPY) 같은 기간 수익률. 0보다 커야 시장보다 강한 것
+//  · 오른 날 거래량 비율(upVol): 최근 20일 거래량 중 오른 날 거래량 비율. 50%↑면 사는 쪽이 더 적극적
+//  · 실적 발표가 5일 안이면 🟣 안 함 (발표 날 ±10%↑ 흔함)
+function usExtra(x, k, spyRet20) {
+  const n = k.length;
+  x.ret20 = (k[n - 1].c / k[n - 21].c - 1) * 100;
+  x.rs20 = spyRet20 == null ? null : x.ret20 - spyRet20;
+  let up = 0, all = 0; for (let i = n - 20; i < n; i++) { all += k[i].v; if (k[i].c > k[i - 1].c) up += k[i].v; }
+  x.upVol = all ? up / all : null;
+}
+function usGrade(x) {
+  const why = [];
+  if (x.kind === 'cross') {
+    // 10/19 과거 시험(152종목·5년): 거래량 1.5배↑ + S&P500보다 강함 + 이평선이 크게 꺾이지 않음이 가장 나았음(20일 뒤 SPY보다 +2.3%)
+    //  이평선 8% 안·오른 날 거래량 조건은 더하면 오히려 줄어서 점수에만 반영
+    if (!(x.volX >= 1.5)) why.push('돌파 거래량 약함');
+    if (x.slope < -3) why.push('이평선이 내려가는 중');
+    if (x.rs20 != null && x.rs20 <= 0) why.push('최근 20일 S&P500보다 약함');
+    if (x.earnDays != null && x.earnDays <= 5) why.push('실적 발표 ' + (x.earnDays <= 0 ? '오늘' : x.earnDays + '일 뒤') + ' (발표 뒤 크게 움직일 수 있음)');
+    x.buy = !why.length;
+  } else { x.buy = false; why.push('아직 돌파 전'); }
+  x.why = why;
+  let s = (x.kind === 'cross' ? 20 : 5) + (x.P === 448 ? 4 : 0)
+    + Math.min(x.volX || 0, 5) * 4
+    + (x.gap >= 0 && x.gap <= 4 ? 8 : x.gap > 4 && x.gap <= 8 ? 4 : x.gap < 0 ? 2 : -5)
+    + (x.slope >= 0 ? 6 : x.slope >= -3 ? 2 : -4)
+    + (x.below60 >= 0.7 ? 5 : 0)
+    + (x.rs20 == null ? 0 : x.rs20 >= 5 ? 8 : x.rs20 > 0 ? 4 : -4)
+    + (x.upVol == null ? 0 : x.upVol >= 0.58 ? 6 : x.upVol >= 0.5 ? 2 : -4)
+    + (x.earnDays != null && x.earnDays <= 5 ? -6 : 0);
+  x.score = Math.round(s * 10) / 10;
+  x.step = x.kind === 'near' ? 1 : x.buy ? (x.days >= 2 ? 3 : 2) : 0;
+}
+function usTodo(x) {
+  const d = function (v) { return '$' + (v >= 100 ? v.toFixed(1) : v.toFixed(2)); };
+  if (x.kind === 'near') return '① 적어 두기 → ' + x.P + '일선(' + d(x.ma) + ')을 종가로 넘는지 확인 (지금 ' + x.gap.toFixed(1) + '%)';
+  if (x.step === 2) return '② 🟣 돌파 첫날 → 다음 장중 ' + x.P + '일선(' + d(x.ma) + ') 근처로 눌리면 절반 (시가 +3%↑ 뛰면 대기)';
+  if (x.step === 3) return '③ ' + x.days + '일째 유지 → 직전 고점(' + d(x.hi20) + ') 넘을 때 나머지 절반 · 정리: 종가가 ' + x.P + '일선 아래면 (과거 시험에서 가장 나았음)';
+  return '지켜보기 → 돌파했지만 ' + (x.why.join(', ') || '조건 부족');
 }
 
 function confirmUps(sigs, c5, c5Closed, holdBars, keepEarly = false) {
@@ -1637,12 +1693,13 @@ function dismiss(ids) { store.set("dismissed", [...new Set([...store.get("dismis
 // 비트코인 흐름: 바이낸스 BTCUSDT 4시간봉 마감 종가가 200선 아래면 하락 추세 (30분마다)
 async function btcRegime() {
   const c = store.get("btcRegime", null);
-  if (c && Date.now() - c.at < 30 * 60e3) return c;
+  if (c && Date.now() - c.at < 30 * 60e3 && "downD" in c) return c;
   const j = await binanceGet("/api/v3/klines?symbol=BTCUSDT&interval=4h&limit=500");
   const close = j.filter(r => +r[0] + 4 * 3600e3 <= Date.now()).map(r => +r[4]), n = close.length;
   if (n < 201) throw new Error("봉 부족");
   const ma = sma(close, 200, n - 1), last = close[n - 1];
   const r = { at: Date.now(), down: last < ma, gap: (last / ma - 1) * 100 };
+  try { const jd = await binanceGet("/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=400"); const dc = jd.filter(x => +x[0] + 86400e3 <= Date.now()).map(x => +x[4]); if (dc.length >= 201) { const dm = sma(dc, 200, dc.length - 1); r.downD = dc[dc.length - 1] < dm; r.gapD = (dc[dc.length - 1] / dm - 1) * 100; } } catch (_) {}
   store.set("btcRegime", r); return r;
 }
 function regimeBanner(el, text) {
@@ -1979,7 +2036,7 @@ function renderNow() {
   const buys = [...bb.values()].sort((a, b) => (b.both ? 1 : 0) - (a.both ? 1 : 0) || (a.t === "1d" ? 0 : 1) - (b.t === "1d" ? 0 : 1) || (recent.has(String(b.x.base).toUpperCase()) ? 1 : 0) - (recent.has(String(a.x.base).toUpperCase()) ? 1 : 0) || a.x.rank - b.x.rank).slice(0, 5);
   const have = byTf["1d"] || byTf["4h"];
   const buyHtml = !have ? `<div class="nempty">아직 계산 전이에요 · '새로 계산'을 누르면 일봉·4시간봉 순위를 계산해요 (각 2~4분)</div>`
-    : buys.length ? buys.map(({ x, t, both }) => row("buy", x, `${both ? '<span class="nboth">일봉·4시간봉 둘 다</span> ' : `<span class="ntf">${NOW_TF[t]}</span> `}${x.mkt === "binancef" ? '<span class="nfut">⚡선물</span> ' : ""}<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small><br><span class="nwhy">${esc([`${NOW_TF[t]} ${x.P}선을 거래량 ${x.volX ? x.volX.toFixed(1) : "–"}배로 넘은 지 ${x.days}봉째`, x.flowOk ? "바이낸스에서 사는 쪽이 더 많아요" : "", sigText(String(x.base).toUpperCase())].filter(Boolean).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")} · 손절 참고 ${x.stopPct.toFixed(1)}%${x.mkt === "binancef" ? ` · ⚡ 최대 ${x.maxLev || "?"}배까지` : ""}`)).join("")
+    : buys.length ? buys.map(({ x, t, both }) => row("buy", x, `${both ? '<span class="nboth">일봉·4시간봉 둘 다</span> ' : `<span class="ntf">${NOW_TF[t]}</span> `}${x.mkt === "binancef" ? '<span class="nfut">⚡선물</span> ' : ""}<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small><br><span class="nwhy">${esc([`${NOW_TF[t]} ${x.P}선을 거래량 ${x.volX ? x.volX.toFixed(1) : "–"}배로 넘은 지 ${x.days}봉째`, x.rsBtc > 0 ? `최근 비트코인보다 ${x.rsBtc.toFixed(1)}%p 강해요` : "", sigText(String(x.base).toUpperCase())].filter(Boolean).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")} · 손절 참고 ${x.stopPct.toFixed(1)}%${x.mkt === "binancef" ? ` · ⚡ 최대 ${x.maxLev || "?"}배까지` : ""}`)).join("")
     : `<div class="nempty">일봉·4시간봉 모두 조건이 다 맞는 코인이 없어요. 억지로 사지 않아도 되는 때예요.</div>`;
   const warnBy = new Map(), rk = t => ({ "1d": 0, "4h": 1, "1h": 2, "5m": 3 }[t] ?? 3);
   for (const y of sc?.signals || []) if (y.dir === "down" && y.held && now - y.t < 2 * 86400e3) { const k = y.mkt + "|" + y.sym, o = warnBy.get(k); if (!o || rk(y.tf) < rk(o.tf)) warnBy.set(k, y); }
@@ -2019,7 +2076,8 @@ async function rkCandles(mkt, sym, tf) {
 async function runRank(tfSide, onProg) {
   if (rkBusy) return;
   rkBusy = true; $("#rkErr").textContent = ""; $("#rkRun").disabled = true;
-  const mainTf = store.get("rankTf", "4h"), tf = tfSide || mainTf, isMain = tf === mainTf;
+  if (!store.get("rankTfMig", false)) { store.set("rankTf", "1d"); store.set("rankTfMig", true); } // 한 번만: 기본 일봉 (과거 시험 반영)
+  const mainTf = store.get("rankTf", "1d"), tf = tfSide || mainTf, isMain = tf === mainTf;
   const prog = (d, t) => { if (onProg) onProg(d, t, tf); if (!isMain) return; $("#rkProg").hidden = false; $("#rkProg i").style.width = (t ? d / t * 100 : 5) + "%"; $("#rkStatus").textContent = `계산 중… ${d}/${t || "?"}`; };
   try {
     prog(0, 0);
@@ -2038,11 +2096,15 @@ async function runRank(tfSide, onProg) {
     const uni = Object.values(lists).flat();
     const cand = [], fails = {};
     let done = 0;
+    // 비트코인 같은 봉 (비트코인보다 강한가) + 비트코인 추세
+    let btcK = null; try { btcK = (await rkCandles("binance", "BTCUSDT", tf)).candles; } catch (_) {}
+    let rgm = null; try { rgm = await btcRegime(); } catch (_) {}
     const job = async it => {
       try {
         const { candles: k, raw } = await rkCandles(it.mkt, it.sym, tf);
         const r = stockSignal(k, { minTurn: 0 });
-        if (r) { coinVolStop(r, k); if (it.mkt === "binancef") r.maxLev = coinMaxLev(r.stopPct); Object.assign(r, { mkt: it.mkt, sym: it.sym, name: it.name, base: coinBase(it.mkt, it.sym, it.name) }); if (raw) r._raw = raw; cand.push(r); }
+        if (r) { coinVolStop(r, k); if (it.mkt === "binancef") r.maxLev = coinMaxLev(r.stopPct); Object.assign(r, { mkt: it.mkt, sym: it.sym, name: it.name, base: coinBase(it.mkt, it.sym, it.name) });
+          r.rsBtc = r.base === "BTC" ? 0 : coinRsBtc(k, btcK, 20); r.btcDown = tf === "1d" ? !!rgm?.downD : !!rgm?.down; if (raw) r._raw = raw; cand.push(r); }
       } catch (_) { fails[it.mkt] = (fails[it.mkt] || 0) + 1; }
       done++; if (done % 5 === 0) prog(done, uni.length);
     };
@@ -2064,7 +2126,11 @@ async function runRank(tfSide, onProg) {
       } catch (_) {}
       fc[b] = f;
     }
-    for (const x of cand) { coinFlow(x, fc[x.base]); coinGrade(x); x.todo = coinTodo(x, RK_LABEL[tf]); delete x._raw; }
+    for (const x of cand) {
+      coinFlow(x, fc[x.base]); coinGrade(x);
+      if (tf !== "1d" && x.buy) { x.buy = false; x.why = [...(x.why || []), "🟣는 일봉만 (4시간·1시간봉 돌파는 과거 시험에서 비트코인보다 나은 점이 없었어요)"]; x.step = 0; }
+      x.todo = coinTodo(x, RK_LABEL[tf]); delete x._raw;
+    }
     const tierOf = x => x.buy ? 3 : x.kind === "cross" ? 2 : 1;
     const g = new Map(); for (const x of cand) { if (!g.has(x.base)) g.set(x.base, []); g.get(x.base).push(x); }
     const items = [];
