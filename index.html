@@ -87,6 +87,7 @@ body.simple .dt { display: none !important; }
 .nowbox .ntf { font-size: 11px; padding: 0 5px; border-radius: 4px; background: color-mix(in srgb, #64748b 20%, var(--bg)); }
 .nowbox .nfut { font-size: 11px; padding: 0 5px; border-radius: 4px; background: #e8590c; color: #fff; font-weight: 700; }
 .nowbox .nhow { margin: 4px 0; font-size: 12px; } .nowbox .nhow ol { margin: 4px 0 0 18px; padding: 0; line-height: 1.6; }
+.nowbox .nver { font-size: 11px; padding: 0 5px; border-radius: 4px; background: rgba(47,158,68,.15); color: #2b8a3e; font-weight: 700; }
 .nowbox .nboth { font-size: 11px; padding: 0 5px; border-radius: 4px; background: #7c3aed; color: #fff; font-weight: 700; }
 .nowbox .nreg { margin: 6px 0 2px; padding: 5px 8px; border-radius: 8px; font-size: 12.5px; background: color-mix(in srgb, #e03131 12%, var(--bg)); }
 @media (prefers-color-scheme: dark) { .nowbox .ns { color: #c4b5fd; } }
@@ -225,7 +226,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v18</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v19</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -308,7 +309,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
   <div class="scanbox">
     <div style="display:flex;gap:8px;align-items:center">
       <button class="primary" id="scanBtn" style="flex:1">지금 스캔</button>
-      <div class="seg" id="sDir"><button data-d="up">▲ 상향</button><button data-d="down">▼ 하향</button><button data-d="engulf">🕯️ 장악</button></div>
+      <div class="seg" id="sDir"><button data-d="buy">▲ 매수 쪽</button><button data-d="down">▼ 하향</button></div><label class="small" style="display:inline-flex;align-items:center;gap:4px;margin-left:6px" title="상향 돌파는 기본으로 4시간·일봉만 (5분·1시간봉 돌파는 과거 성적이 나빴어요)"><input type="checkbox" id="sAllTf" style="width:auto;margin:0"> 모든 봉</label>
     </div>
     <div style="display:flex;justify-content:flex-end"><button id="sClear" class="small">보이는 신호 지우기</button></div>
     <div class="prog" hidden id="scanProg"><i></i></div>
@@ -1501,7 +1502,7 @@ function resetForm() {
   $("#hEx").disabled = false; $("#hCoin").disabled = false;
 }
 $("#hCancel").addEventListener("click", resetForm);
-$("#rbNote").addEventListener("click", () => { scanDir = "up"; store.set("scanDir", "up"); show("sig"); });
+$("#rbNote").addEventListener("click", () => { scanDir = "buy"; store.set("scanDir", "buy"); show("sig"); });
 $("#hForm").addEventListener("submit", async e => {
   e.preventDefault();
   const avg = Number($("#hAvg").value), qty = Number($("#hQty").value), msg = t => { $("#hMsg").textContent = t; };
@@ -1607,7 +1608,8 @@ $("#mList").addEventListener("click", e => {
 });
 
 // ---------- 신호 스캔 ----------
-let scanDir = store.get("scanDir", "up"), scanning = false;
+let scanDir = store.get("scanDir", "buy"), scanning = false;
+if (scanDir === "up" || scanDir === "engulf") scanDir = "buy"; // 상향 돌파 + 꼬리+장악을 한 목록으로 합침
 async function scan() {
   if (scanning) return;
   scanning = true;
@@ -1714,7 +1716,7 @@ function refreshRegime() { btcRegime().then(() => { if (page === "sig") { render
 let downAll = store.get("downAll", false);
 function renderSignals() {
   markSeg("#sDir", "d", scanDir);
-  regimeBanner($("#sRegime"), "하락장이라 상향 돌파는 일봉·4시간봉을 위로 올렸어요. 짧은 봉 신호는 조심해서 보세요.");
+  regimeBanner($("#sRegime"), "비트코인 하락 추세예요. 신호 목록은 기록용이고, 살지 말지는 '보유' 탭의 지금 볼 것(🏆 살 만한 후보)에서 보세요.");
   const sc = store.get("scan", null);
   if (!sc) { $("#scanStatus").textContent = "아직 스캔하지 않았어요. 보유·관심 코인과 거래대금 상위 코인을 확인해요 (설정에서 범위 조절)."; $("#sList").innerHTML = ""; return; }
   if (!scanning) {
@@ -1724,10 +1726,12 @@ function renderSignals() {
   const gone = dismissed();
   sc.signals = sc.signals.filter(x => !gone.has(sid(x)));
   // 하향 이탈은 보유·관심 코인만 (전체 보기를 켜면 다)
-  let list = sc.signals.filter(x => x.dir === scanDir && (x.dir !== "down" || downAll || x.held || x.watch));
-  if (scanDir === "engulf") list.sort((a, b) => (b.good ? 1 : 0) - (a.good ? 1 : 0) || ({ "1d": 0, "4h": 1, "1h": 2 }[a.tf] - { "1d": 0, "4h": 1, "1h": 2 }[b.tf]) || b.t - a.t);
-  const rg = store.get("btcRegime", null);
-  if (scanDir === "up" && rg?.down) { const rank = { "1d": 0, "4h": 1, "1h": 2, "5m": 3 }; list.sort((a, b) => (rank[a.tf] ?? 3) - (rank[b.tf] ?? 3)); }
+  const allTf = store.get("sAllTf", false); $("#sAllTf").checked = allTf;
+  let list = scanDir === "buy" ? sc.signals.filter(x => x.dir === "engulf" || (x.dir === "up" && (allTf || x.tf === "4h" || x.tf === "1d")))
+    : sc.signals.filter(x => x.dir === "down" && (downAll || x.held || x.watch));
+  list.sort((a, b) => b.t - a.t);
+  // 🏆 종합 순위 위쪽 코인을 위로
+  if (scanDir === "buy") { const cr = store.get("comboRank", {}), r = x => cr[coinKey(x)]?.rank ?? 99; list.sort((a, b) => Math.min(r(a), 21) - Math.min(r(b), 21)); }
   list.sort((a, b) => (b.rebreak ? 1 : 0) - (a.rebreak ? 1 : 0));
   renderSignals.shown = list.map(sid);
   // 🔥 재돌파 모아 보기 (코인당 최근 1개)
@@ -1739,32 +1743,30 @@ function renderSignals() {
       <span class="p num">${fmtPrice(x.price, x.mkt)}</span>
       <div class="small">일봉 ${x.rebreak.vol}배 돌파(${x.rebreak.daysAgo}일 전) → ${x.rebreak.fromHigh}% 눌림 → 재돌파 · 거래량 ${x.volRatio.toFixed(1)}배</div>
     </div>`).join("") : "";
-  if (scanDir === "engulf") {
-    $("#sList").innerHTML = `<div class="downbar">🕯️ 음봉이 아래꼬리를 길게 달고 바로 다음 양봉이 그 음봉보다 크게 덮은 모양 (최근 하루 · 1시간·4시간·일봉). ⭐ = 하락 뒤이거나 200·448선 근처에서 나온 것. 아직 검증 중인 신호예요.</div>` +
-      (list.length ? list.map(x => `
+  const engulfCard = x => `
       <div class="scard su ${x.good ? "star" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}" data-id="${esc(sid(x))}">
         <button class="sdel" aria-label="지우기">✕</button>
-        <div class="s1">${x.good ? '<b style="color:var(--star)">⭐</b>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.sym)} · ${EX_LABEL[x.mkt]}</span><span class="p num">${fmtPrice(x.price, x.mkt)}</span></div>
+        <div class="s1"><b>🕯️</b><b>${esc(x.name)}</b><span class="muted small">${esc(x.sym)} · ${EX_LABEL[x.mkt]}</span><span class="p num">${fmtPrice(x.price, x.mkt)}</span></div>
         <div class="s2">
-          ${x.good ? `<span class="pill" style="background:#2b8a3e;color:#fff">⭐ 좋은 자리${x.nearMa ? ` · ${x.nearMa}선 지지` : ""}${x.afterDrop ? " · 하락 뒤" : ""}</span>` : ""}
+          ${comboChip(x)}
+          <span class="pill">🕯️ 꼬리+장악</span>
+          ${x.good ? `<span class="pill" style="color:#2b8a3e">⭐ ${x.nearMa ? `${x.nearMa}선 지지` : ""}${x.nearMa && x.afterDrop ? " · " : ""}${x.afterDrop ? "하락 뒤" : ""}</span>` : ""}
           ${x.held ? '<span class="pill" style="background:#7048e8;color:#fff">보유</span>' : x.watch ? '<span class="pill" style="color:#7048e8">관심</span>' : ""}
           ${rankChip(x)}
           <span class="pill conf">${TF_LABEL[x.tf]}</span>
-          <span>꼬리 ${x.tailX.toFixed(1)}배 → 장악 몸통 ${x.bodyX.toFixed(1)}배</span>
-          <span class="dt">거래량 ${x.volRatio.toFixed(1)}배</span>
+          <span class="dt">꼬리 ${x.tailX.toFixed(1)}배 → 장악 몸통 ${x.bodyX.toFixed(1)}배</span>
           <span>손절 참고 ${fmtPrice(x.stop, x.mkt)} (${x.stopPct.toFixed(1)}%)</span>
           <span>· ${kst(x.t, x.tf)}봉</span>
         </div>
-      </div>`).join("") : `<div class="empty">최근 하루 안에 꼬리+장악 모양이 나온 코인이 없어요. (스캔할 때 1시간·4시간·일봉 중 켜 둔 봉만 봐요)</div>`);
-    return;
-  }
-  $("#sList").innerHTML = (scanDir === "down" ? `<div class="downbar">▼ 하향 이탈은 <b>보유·관심 코인</b>만 보여요 (보유 코인이 이평선 아래로 마감 = 정리·축소 검토) <label><input type="checkbox" id="sDownAll" style="width:auto;margin:0" ${downAll ? "checked" : ""}> 전체 보기</label></div>` : "") + (list.length ? list.map(x => `
+      </div>`;
+  $("#sList").innerHTML = (scanDir === "down" ? `<div class="downbar">▼ 하향 이탈은 <b>보유·관심 코인</b>만 보여요 (보유 코인이 이평선 아래로 마감 = 정리·축소 검토) <label><input type="checkbox" id="sDownAll" style="width:auto;margin:0" ${downAll ? "checked" : ""}> 전체 보기</label></div>` : "") + (list.length ? list.map(x => x.dir === "engulf" ? engulfCard(x) : `
     <div class="scard ${x.dir === "up" ? "su" : "sd"} ${x.dir === "down" && x.held ? "holdwarn" : ""} ${x.star ? "star" : ""} ${x.rebreak ? "rebreak" : ""}" data-k="${esc(x.mkt + "|" + x.sym)}" data-n="${esc(x.name)}" data-id="${esc(sid(x))}">
       <button class="sdel" aria-label="지우기">✕</button>
       <div class="s1">${x.star ? '<b style="color:var(--star)">★</b>' : ""}<b>${esc(x.name)}</b><span class="muted small">${esc(x.sym)} · ${EX_LABEL[x.mkt]}</span>
         ${x.score != null ? `<span class="rate ${x.star ? "strong" : "weak"}">${x.score}/${x.scoreMax}</span>` : ""}
         <span class="p num">${fmtPrice(x.price, x.mkt)}</span></div>
       <div class="s2">
+        ${comboChip(x)}
         ${x.rebreak ? `<span class="pill rb">🔥 재돌파 · 일봉 ${x.rebreak.vol}배 돌파 후 ${x.rebreak.fromHigh}% 눌림</span>` : ""}
         ${x.dir === "down" && x.held ? '<span class="pill" style="background:#e8590c;color:#fff">⚠ 보유 중 이탈</span>' : x.held ? '<span class="pill" style="background:#7048e8;color:#fff">보유</span>' : x.watch ? '<span class="pill" style="color:#7048e8">관심</span>' : ""}
         ${x.dir === "up" ? rankChip(x) : ""}
@@ -1776,7 +1778,7 @@ function renderSignals() {
         <span class="dt">RSI ${x.rsi.toFixed(0)}</span><span>· ${kst(x.t, x.tf)}봉</span>
       </div>
       ${x.checks ? `<div class="checks dt">${x.checks.map(c => `<span class="${c.ok ? "" : "no"}">${c.ok ? "✓" : "✗"} ${esc(c.label)}</span>`).join("")}</div>` : ""}
-    </div>`).join("") : `<div class="empty">${scanDir === "up" ? "상향 돌파" : downAll ? "하향 이탈" : "보유·관심 코인 중 하향 이탈한"} 신호가 없어요.</div>`);
+    </div>`).join("") : `<div class="empty">${scanDir === "buy" ? "매수 쪽(상향 돌파 4시간·일봉 · 꼬리+장악)" : downAll ? "하향 이탈" : "보유·관심 코인 중 하향 이탈한"} 신호가 없어요.</div>`);
 }
 // 🪙 코인 순위 등급을 신호 카드에, 최근 신호를 순위 카드에
 const coinKey = x => (x.mkt === "binance" || x.mkt === "binancef") ? String(x.sym).replace(/(USDT|USDC|FDUSD)$/, "").replace(/^1000+/, "").toUpperCase() : String(x.sym).toUpperCase();
@@ -1791,6 +1793,8 @@ function sigChips(base) {
   return sc.signals.filter(y => ((y.dir === "up" && Date.now() - y.t < 3 * 86400e3) || (y.dir === "engulf" && Date.now() - y.t < 2 * 86400e3)) && coinKey(y) === String(base).toUpperCase())
     .sort((a, b) => b.t - a.t).map(y => { const l = y.dir === "engulf" ? `🕯️${TFS[y.tf]}${y.good ? "⭐" : ""}` : `▲${TFS[y.tf]} ${y.period}`; if (seen.has(l)) return ""; seen.add(l); return `<span class="sigchip">${l}</span>`; }).join("");
 }
+$("#sAllTf").addEventListener("change", e => { store.set("sAllTf", e.target.checked); renderSignals(); });
+function comboChip(x) { const c = store.get("comboRank", {})[coinKey(x)]; return c ? `<span class="pill" style="color:#7c3aed;font-weight:700">🏆 ${c.rank}위 · ${c.total}점</span>` : ""; }
 $("#sList").addEventListener("change", e => { if (e.target.id !== "sDownAll") return; downAll = e.target.checked; store.set("downAll", downAll); renderSignals(); });
 $("#scanBtn").addEventListener("click", scan);
 $("#sClear").addEventListener("click", () => {
@@ -2022,6 +2026,69 @@ async function nowRefresh(force) {
     for (const t of due) await runRank(t, (d, n) => { const el = $("#nowProg"); if (el) el.textContent = `${NOW_TF[t]} 계산 중… ${d}/${n || "?"}`; });
   } finally { nowRunning = false; renderNow(); }
 }
+// 🏆 종합 순위 (노트북과 같은 점수·같은 ✅ 기준) — 지금 가격은 거래소 전체 시세로
+const CB_DUR = { "5m": 300e3, "1h": 3600e3, "4h": 4 * 3600e3, "1d": 86400e3 };
+const CB_W = { rankbuy: { "1d": 30, "4h": 6 }, rankcross: { "1d": 10, "4h": 2 }, ranknear: { "1d": 7, "4h": 1 }, engulfG: { "1d": 5, "4h": 2, "1h": 1 }, engulf: { "1d": 10, "4h": 3, "1h": 1 }, up: { "1d": 8, "4h": 2 } };
+const CB_AGE = { engulf: { "1h": 24, "4h": 48, "1d": 120 }, up: { "4h": 48, "1d": 120 } };
+let cbQ = {}, cbQAt = 0, cbQBusy = false;
+async function cbQuotes(keys) {
+  if (cbQBusy || Date.now() - cbQAt < 60e3) return;
+  cbQBusy = true;
+  try {
+    const mk = [...new Set(keys.map(k => k.split("|")[0]))];
+    for (const m of mk) { try { (await tickers(m, 60e3)).forEach(r => { cbQ[m + "|" + r.sym] = r.price; }); } catch (_) {} }
+    cbQAt = Date.now();
+  } finally { cbQBusy = false; renderNow(); }
+}
+function phoneCombo() {
+  const byTf = store.get("rankByTf", {}), sc = store.get("scan", null), rg = store.get("btcRegime", null), now = Date.now();
+  const down = !!(rg && now - rg.at < 3 * 3600e3 && rg.downD === true), comps = [];
+  for (const t of ["1d", "4h"]) for (const x of byTf[t]?.items || []) {
+    const type = x.buy ? "rankbuy" : x.kind === "cross" ? "rankcross" : "ranknear";
+    comps.push({ type, tf: t, base: String(x.base).toUpperCase(), mkt: x.mkt, sym: x.sym, name: x.name, p0: x.price, stop: x.stop, t: byTf[t].at, src: x,
+      label: `${x.buy ? "🟣 순위" : x.kind === "cross" ? "👀 순위" : "⏳ 순위"} ${NOW_TF[t]} ${x.P}선${x.kind === "cross" ? ` 돌파 ${x.days}봉째` : " 임박"}` });
+  }
+  for (const y of sc?.signals || []) {
+    let type = null;
+    if (y.dir === "engulf" && CB_W.engulf[y.tf]) type = y.good ? "engulfG" : "engulf";
+    else if (y.dir === "up" && (y.tf === "4h" || y.tf === "1d")) type = "up";
+    if (!type) continue;
+    const fam = type.startsWith("engulf") ? "engulf" : "up", maxH = CB_AGE[fam][y.tf] || 24, tC = y.t + (CB_DUR[y.tf] || 3600e3);
+    if (now - tC > maxH * 3600e3) continue;
+    comps.push({ type, tf: y.tf, base: coinKey(y), mkt: y.mkt, sym: y.sym, name: y.name, p0: y.price, stop: y.stop || null, t: tC, maxH, src: y,
+      label: type === "up" ? `▲ ${NOW_TF[y.tf]} ${y.period}선 돌파` : `🕯️ 꼬리+장악 ${NOW_TF[y.tf]}${y.good ? " ⭐" : ""}` });
+  }
+  cbQuotes([...new Set(comps.map(c => c.mkt + "|" + c.sym))]);
+  const by = new Map();
+  for (const c of comps) {
+    const live = cbQ[c.mkt + "|" + c.sym]; c.live = live ?? null; c.chg = live && c.p0 ? (live / c.p0 - 1) * 100 : null;
+    const ageH = (now - c.t) / 3600e3, decay = c.maxH ? Math.max(0.25, 1 - Math.max(0, ageH) / c.maxH * 0.75) : 1;
+    c.status = c.stop && live != null && live < c.stop ? "broken" : c.chg != null && c.chg >= 8 ? "hot" : c.maxH && ageH > c.maxH * 0.7 ? "aged" : "ok";
+    let q2 = 1;
+    if (c.type.startsWith("rank") && c.tf === "1d" && c.src.kind === "cross") { if (c.src.volX >= 1.5) q2 *= 1.3; if (c.src.rsBtc != null) q2 *= c.src.rsBtc > 0 ? 1.2 : 0.6; if (c.src.below60 >= 0.7) q2 *= 1.2; }
+    if (c.type === "engulfG" && c.tf === "1d" && down) q2 *= 2;
+    c.keep = c.tf === "1d" && c.type.startsWith("engulf");
+    c.w = (CB_W[c.type]?.[c.tf] || 0) * q2 * decay * (c.status === "broken" ? 0 : c.status === "hot" ? 0.5 : 1);
+    if (!by.has(c.base)) by.set(c.base, []); by.get(c.base).push(c);
+  }
+  const rows = [];
+  for (const [base, cs] of by) {
+    const best = new Map(); for (const c of cs) { const k = c.type + "|" + c.tf; if (!best.has(k) || best.get(k).w < c.w) best.set(k, c); }
+    const list = [...best.values()].sort((a, b) => b.w - a.w);
+    const fams = new Set(list.filter(c => c.w > 0).map(c => c.type.startsWith("rank") ? "rank" : c.type.startsWith("engulf") ? "engulf" : "up"));
+    const total = list.reduce((sum, c) => sum + c.w * (down && !c.keep ? 0.5 : 1), 0) + Math.max(0, fams.size - 1) * 4;
+    const top = list[0], spot = cs.find(c => c.mkt !== "binancef" && c.mkt !== "binancea") || top;
+    const vB = list.find(c => c.w > 0 && c.tf === "1d" && c.type === "rankbuy"), vE = list.find(c => c.w > 0 && c.tf === "1d" && c.type.startsWith("engulf"));
+    const verified = !down && vB ? "✅ 시험 검증 · 일봉 돌파 + 거래량 1.5배↑ + 비트코인보다 강함" : down && vE ? "✅ 하락장 짧은 반등 · 일봉 꼬리+장악 (작게)" : "";
+    const stopC = list.find(c => c.stop && c.status !== "broken");
+    const todo = vB ? vB.src.todo : vE ? `장악봉 종가(${fmtPrice(vE.p0, vE.mkt)}) 근처에서 작게 · 3일 안에 안 오르면 정리 · 꼬리 끝(손절 참고) 아래면 바로 정리` : (top.src.todo || "지켜보기");
+    rows.push({ base, name: spot.name, mkt: spot.mkt, sym: spot.sym, total: Math.round(total), list, verified, status: top.status, todo, stopPct: stopC?.stop && stopC.live ? (stopC.stop / stopC.live - 1) * 100 : null });
+  }
+  rows.sort((a, b) => b.total - a.total);
+  const cr = {}; rows.filter(x => x.total > 0).slice(0, 40).forEach((x, i) => { cr[x.base] = { rank: i + 1, total: x.total }; });
+  store.set("comboRank", cr);
+  return { rows, down };
+}
 function renderNow() {
   const box = $("#nowBox"); if (!box) return;
   const byTf = store.get("rankByTf", {}), sc = store.get("scan", null), now = Date.now();
@@ -2034,27 +2101,29 @@ function renderNow() {
     return [u ? `이평 신호에도 ${NOW_TF[u.tf]} ${u.period}선 돌파가 떴어요` : "", e ? `${NOW_TF[e.tf]} 반등 모양(꼬리+장악)${e.good ? "이 좋은 자리에서" : "도"} 나왔어요` : ""].filter(Boolean).join(" · ");
   };
   const row = (cls, x, title, sub) => `<div class="nrow ${cls}" data-m="${esc(x.mkt)}" data-s="${esc(x.sym)}" data-n="${esc(x.name)}">${title}${sub ? `<div class="ns">${sub}</div>` : ""}</div>`;
-  const bb = new Map();
-  for (const t of ["1d", "4h"]) for (const x of (byTf[t]?.items || []).filter(y => y.buy)) { const k = String(x.base).toUpperCase(); if (!bb.has(k)) bb.set(k, { x, t, both: false }); else bb.get(k).both = true; }
-  const buys = [...bb.values()].sort((a, b) => (b.both ? 1 : 0) - (a.both ? 1 : 0) || (a.t === "1d" ? 0 : 1) - (b.t === "1d" ? 0 : 1) || (recent.has(String(b.x.base).toUpperCase()) ? 1 : 0) - (recent.has(String(a.x.base).toUpperCase()) ? 1 : 0) || a.x.rank - b.x.rank).slice(0, 5);
+  const cb = phoneCombo();
+  const picks = cb.rows.filter(x => x.verified && x.total >= 8 && x.status !== "broken" && x.status !== "hot").slice(0, 5);
+  const buys = picks.map(x => ({ x }));
   const have = byTf["1d"] || byTf["4h"];
+  const ST = { ok: "✅", hot: "🔥", broken: "❌", aged: "⌛" };
+  const tm = t => new Date(t).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
   const buyHtml = !have ? `<div class="nempty">아직 계산 전이에요 · '새로 계산'을 누르면 일봉·4시간봉 순위를 계산해요 (각 2~4분)</div>`
-    : buys.length ? buys.map(({ x, t, both }) => row("buy", x, `${both ? '<span class="nboth">일봉·4시간봉 둘 다</span> ' : `<span class="ntf">${NOW_TF[t]}</span> `}${x.mkt === "binancef" ? '<span class="nfut">⚡선물</span> ' : ""}<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small><br><span class="nwhy">${esc([`${NOW_TF[t]} ${x.P}선을 거래량 ${x.volX ? x.volX.toFixed(1) : "–"}배로 넘은 지 ${x.days}봉째`, x.rsBtc > 0 ? `최근 비트코인보다 ${x.rsBtc.toFixed(1)}%p 강해요` : "", sigText(String(x.base).toUpperCase())].filter(Boolean).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")} · 손절 참고 ${x.stopPct.toFixed(1)}%${x.mkt === "binancef" ? ` · ⚡ 최대 ${x.maxLev || "?"}배까지` : ""}`)).join("")
-    : `<div class="nempty">일봉·4시간봉 모두 조건이 다 맞는 코인이 없어요. 억지로 사지 않아도 되는 때예요.</div>`;
+    : picks.length ? picks.map(x => row("buy", x, `<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small> <span class="ntf">종합 ${x.total}점</span><br><span class="nver">${esc(x.verified)}</span><br><span class="nwhy">${esc(x.list.filter(c => c.w > 0).slice(0, 3).map(c => `${c.label} (${tm(c.t)}${c.chg != null ? `, 지금 ${c.chg >= 0 ? "+" : ""}${c.chg.toFixed(1)}% ${ST[c.status]}` : ""})`).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")}${x.stopPct != null ? ` · 손절 참고 ${x.stopPct.toFixed(1)}%` : ""}`)).join("")
+    : `<div class="nempty">${cb.down ? "비트코인 하락 추세(일봉 200선 아래)라 쉬는 때예요. 하락장 일봉 꼬리+장악 반등도 지금은 없어요." : "지금은 과거 시험으로 검증된 신호(일봉 🟣)가 있으면서 아직 안 뛴 코인이 없어요. 억지로 사지 않아도 되는 때예요."}</div>`;
   const warnBy = new Map(), rk = t => ({ "1d": 0, "4h": 1, "1h": 2, "5m": 3 }[t] ?? 3);
   for (const y of sc?.signals || []) if (y.dir === "down" && y.held && now - y.t < 2 * 86400e3) { const k = y.mkt + "|" + y.sym, o = warnBy.get(k); if (!o || rk(y.tf) < rk(o.tf)) warnBy.set(k, y); }
   const warns = [...warnBy.values()].slice(0, 5);
   const warnHtml = warns.length ? warns.map(y => row("warn", y, `<b>${esc(y.name)}</b> <small class="muted">${esc(EX_LABEL[y.mkt])}</small> <span class="nwhy">${NOW_TF[y.tf]} ${y.period}선 아래로 내려갔어요</span>`, y.tf === "5m" ? "5분봉이라 잠깐일 수 있어요 · 1시간봉 이상도 보기" : `할 일: ${NOW_TF[y.tf]} 마감이 선 아래면 정리하거나 줄이기 검토`)).join("")
     : `<div class="nempty">${sc ? "보유 코인 중 이평선 아래로 내려간 건 없어요." : "⚡ 신호 탭에서 스캔하면 보유 코인 이탈도 같이 봐요."}</div>`;
-  const wseen = new Set(buys.map(b => String(b.x.base).toUpperCase())), watches = [];
+  const wseen = new Set(picks.map(b => b.base)), watches = [];
   for (const t of ["1d", "4h"]) for (const x of (byTf[t]?.items || []).filter(y => !y.buy && y.kind === "cross")) { const k = String(x.base).toUpperCase(); if (wseen.has(k) || watches.length >= 3) continue; wseen.add(k); watches.push({ x, t }); }
   const watchHtml = watches.map(({ x, t }) => row("watch", x, `<span class="ntf">${NOW_TF[t]}</span> <b>${esc(x.name)}</b> <span class="nwhy">${x.P}선은 넘었지만 ${esc((x.why || [])[0] || "조건 부족")}</span>`, "")).join("") || `<div class="nempty">-</div>`;
   const rg = store.get("btcRegime", null);
-  const reg = rg?.down && now - rg.at < 3 * 3600e3 ? `<div class="nreg">📉 지금은 비트코인이 하락 추세(4시간봉 200선 아래)예요. 사더라도 평소보다 작게.</div>` : "";
+  const reg = rg && now - rg.at < 3 * 3600e3 && rg.downD === true ? `<div class="nreg">📉 비트코인이 하락 추세(일봉 200선 아래)라 🟣는 쉬어요. 과거 5년 시험에서 이런 때 일봉 돌파는 평균 손해였어요.</div>` : "";
   const hm = t => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   box.innerHTML = `<div class="nhead"><b>지금 볼 것</b><button id="nowRun">새로 계산</button><button id="nowFold">${fold ? "펴기" : "접기"}</button></div>
     <div class="muted small" id="nowProg">${["1d", "4h"].map(t => byTf[t] ? `${NOW_TF[t]} ${hm(byTf[t].at)}` : `${NOW_TF[t]} 계산 전`).join(" · ")} 기준${nowRunning ? " · 계산 중…" : ""}</div>` +
-    (fold ? "" : reg + `<div class="nsec">🟣 살 만한 후보</div>${buyHtml}<details class="nhow"><summary>🕘 언제 사고 언제 파나 (과거 시험 기준)</summary><ol><li><b>뜨는 때</b> — 일봉은 매일 오전 9시 마감, 그 뒤 순위 계산</li><li><b>첫 절반</b> — 9시 이후 새 일봉 초반 (이미 +5%↑면 건너뛰기)</li><li><b>나머지 절반</b> — 5일 안에 할 일의 '중간 가격'까지 내려오면</li><li><b>산 뒤</b> — 매일 9시 마감 뒤: 일봉이 선 아래 · 고점에서 -10% · 손절 참고 아래 → 정리</li></ol></details><div class="nsec">⚠ 보유 코인 주의</div>${warnHtml}<div class="nsec">👀 지켜볼 코인</div>${watchHtml}`);
+    (fold ? "" : reg + `<div class="nsec">🏆 살 만한 후보 <small class="muted">(✅ 검증된 신호만 · 이미 뛴 것·깨진 것 빼고)</small></div>${buyHtml}<details class="nhow"><summary>🕘 언제 사고 언제 파나 (과거 시험 기준)</summary><ol><li><b>뜨는 때</b> — 일봉은 매일 오전 9시 마감, 그 뒤 순위 계산</li><li><b>첫 절반</b> — 9시 이후 새 일봉 초반 (이미 +5%↑면 건너뛰기)</li><li><b>나머지 절반</b> — 5일 안에 할 일의 '중간 가격'까지 내려오면</li><li><b>산 뒤</b> — 매일 9시 마감 뒤: 일봉이 선 아래 · 고점에서 -10% · 손절 참고 아래 → 정리</li></ol></details><div class="nsec">⚠ 보유 코인 주의</div>${warnHtml}<div class="nsec">👀 지켜볼 코인</div>${watchHtml}`);
 }
 $("#nowBox").addEventListener("click", e => {
   if (e.target.id === "nowFold") { store.set("nowFold", !store.get("nowFold", false)); renderNow(); return; }
