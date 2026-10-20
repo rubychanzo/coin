@@ -223,12 +223,16 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 .toast[hidden] { display: none; }
 .nlong { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 999px; background: #e7f6ea; color: #1d7a35; font-weight: 600; }
 @media (prefers-color-scheme: dark) { .nlong { background: #16351f; color: #7fd69a; } }
+.cbst { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 0 7px; border-radius: 999px; }
+.cbst.ok { background: #dff5e4; color: #14632b; } .cbst.far { background: #ffe9cc; color: #8a4b00; } .cbst.stop { background: #fde0e0; color: #9b1c1c; }
+.nrow.out { opacity: .75; }
+@media (prefers-color-scheme: dark) { .cbst.ok { background: #16351f; color: #8fe0a6; } .cbst.far { background: #3d2a10; color: #ffc27a; } .cbst.stop { background: #3d1616; color: #ff9b9b; } }
 </style>
 </head>
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v20</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v21</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -2084,7 +2088,7 @@ function phoneCombo() {
     const verified = !down && vB ? "✅ 시험 검증 · 일봉 돌파 + 거래량 1.5배↑ + 비트코인보다 강함" : down && vE ? "✅ 하락장 짧은 반등 · 일봉 꼬리+장악 (작게)" : "";
     const stopC = list.find(c => c.stop && c.status !== "broken");
     const todo = vB ? vB.src.todo : vE ? `장악봉 종가(${fmtPrice(vE.p0, vE.mkt)}) 근처에서 작게 · 3일 안에 안 오르면 정리 · 꼬리 끝(손절 참고) 아래면 바로 정리` : (top.src.todo || "지켜보기");
-    rows.push({ base, name: spot.name, mkt: spot.mkt, sym: spot.sym, total: Math.round(total), list, verified, long: list.some(c => c.tf === "1d" && c.src?.kind === "cross" && c.src.below60 >= 0.7), status: top.status, todo, stopPct: stopC?.stop && stopC.live ? (stopC.stop / stopC.live - 1) * 100 : null });
+    rows.push({ base, name: spot.name, mkt: spot.mkt, sym: spot.sym, total: Math.round(total), list, verified, vchg: (!down && vB ? vB : down && vE ? vE : null)?.chg ?? null, long: list.some(c => c.tf === "1d" && c.src?.kind === "cross" && c.src.below60 >= 0.7), status: top.status, todo, stopPct: stopC?.stop && stopC.live ? (stopC.stop / stopC.live - 1) * 100 : null });
   }
   rows.sort((a, b) => b.total - a.total);
   const cr = {}; rows.filter(x => x.total > 0).slice(0, 40).forEach((x, i) => { cr[x.base] = { rank: i + 1, total: x.total }; });
@@ -2109,8 +2113,15 @@ function renderNow() {
   const have = byTf["1d"] || byTf["4h"];
   const ST = { ok: "✅", hot: "🔥", broken: "❌", aged: "⌛" };
   const tm = t => new Date(t).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  const cbChip = x => { const c = x.vchg, P = v => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+    if (x.status === "broken") return `<span class="cbst stop">🟥 손절선 아래 → 넘기기</span>`;
+    if (x.status === "hot" || (c != null && c >= 8)) return `<span class="cbst far">🟧 이미 ${c != null ? P(c) : "많이"} 뜀 → 넘기기</span>`;
+    if (c != null && c >= 5) return `<span class="cbst far">🟧 신호 뒤 ${P(c)} → 오늘은 대기</span>`;
+    return `<span class="cbst ok">✅ 살 만함${c != null ? ` · 신호 뒤 ${P(c)}` : ""}</span>`; };
+  const cbOut = cb.rows.filter(x => x.verified && x.total >= 8 && (x.status === "broken" || x.status === "hot")).slice(0, 3);
+  const outHtml = cbOut.length ? `<div class="ns muted" style="margin:4px 0 2px">빠진 후보 (검증된 신호지만 지금은 넘기기)</div>` + cbOut.map(x => row("out", x, `${cbChip(x)} <b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small>`, "")).join("") : "";
   const buyHtml = !have ? `<div class="nempty">아직 계산 전이에요 · '새로 계산'을 누르면 일봉·4시간봉 순위를 계산해요 (각 2~4분)</div>`
-    : picks.length ? picks.map(x => row("buy", x, `<b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small> <span class="ntf">종합 ${x.total}점</span><br>${x.long ? '<span class="nlong">🌱 오래 눌림</span> ' : ""}<span class="nver">${esc(x.verified)}</span><br><span class="nwhy">${esc(x.list.filter(c => c.w > 0).slice(0, 3).map(c => `${c.label} (${tm(c.t)}${c.chg != null ? `, 지금 ${c.chg >= 0 ? "+" : ""}${c.chg.toFixed(1)}% ${ST[c.status]}` : ""})`).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")}${x.stopPct != null ? ` · 손절 참고 ${x.stopPct.toFixed(1)}%` : ""}`)).join("")
+    : picks.length ? picks.map(x => row("buy", x, `${cbChip(x)} <b>${esc(x.name)}</b> <small class="muted">${esc(EX_LABEL[x.mkt])}</small> <span class="ntf">종합 ${x.total}점</span><br>${x.long ? '<span class="nlong">🌱 오래 눌림</span> ' : ""}<span class="nver">${esc(x.verified)}</span><br><span class="nwhy">${esc(x.list.filter(c => c.w > 0).slice(0, 3).map(c => `${c.label} (${tm(c.t)}${c.chg != null ? `, 지금 ${c.chg >= 0 ? "+" : ""}${c.chg.toFixed(1)}% ${ST[c.status]}` : ""})`).join(" · "))}</span>`, `할 일: ${esc(x.todo || "")}${x.stopPct != null ? ` · 손절 참고 ${x.stopPct.toFixed(1)}%` : ""}`)).join("")
     : `<div class="nempty">${cb.down ? "비트코인 하락 추세(일봉 200선 아래)라 쉬는 때예요. 하락장 일봉 꼬리+장악 반등도 지금은 없어요." : "지금은 과거 시험으로 검증된 신호(일봉 🟣)가 있으면서 아직 안 뛴 코인이 없어요. 억지로 사지 않아도 되는 때예요."}</div>`;
   const warnBy = new Map(), rk = t => ({ "1d": 0, "4h": 1, "1h": 2, "5m": 3 }[t] ?? 3);
   for (const y of sc?.signals || []) if (y.dir === "down" && y.held && now - y.t < 2 * 86400e3) { const k = y.mkt + "|" + y.sym, o = warnBy.get(k); if (!o || rk(y.tf) < rk(o.tf)) warnBy.set(k, y); }
@@ -2125,7 +2136,7 @@ function renderNow() {
   const hm = t => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   box.innerHTML = `<div class="nhead"><b>지금 볼 것</b><button id="nowRun">새로 계산</button><button id="nowFold">${fold ? "펴기" : "접기"}</button></div>
     <div class="muted small" id="nowProg">${["1d", "4h"].map(t => byTf[t] ? `${NOW_TF[t]} ${hm(byTf[t].at)}` : `${NOW_TF[t]} 계산 전`).join(" · ")} 기준${nowRunning ? " · 계산 중…" : ""}</div>` +
-    (fold ? "" : reg + `<div class="nsec">🏆 살 만한 후보 <small class="muted">(✅ 검증된 신호만 · 이미 뛴 것·깨진 것 빼고)</small></div>${buyHtml}<details class="nhow"><summary>🕘 언제 사고 언제 파나 (과거 시험 기준)</summary><ol><li><b>뜨는 때</b> — 일봉은 매일 오전 9시 마감, 그 뒤 순위 계산</li><li><b>첫 절반</b> — 9시 이후 새 일봉 초반 (이미 +5%↑면 건너뛰기)</li><li><b>나머지 절반</b> — 5일 안에 할 일의 '중간 가격'까지 내려오면</li><li><b>산 뒤</b> — 매일 9시 마감 뒤: 일봉이 선 아래 · 고점에서 -10% · 손절 참고 아래 → 정리</li></ol></details><div class="nsec">⚠ 보유 코인 주의</div>${warnHtml}<div class="nsec">👀 지켜볼 코인</div>${watchHtml}`);
+    (fold ? "" : reg + `<div class="nsec">🏆 살 만한 후보 <small class="muted">(✅ 검증된 신호만 · 이미 뛴 것·깨진 것 빼고)</small></div>${buyHtml}${outHtml}<details class="nhow"><summary>🕘 언제 사고 언제 파나 (과거 시험 기준)</summary><ol><li><b>뜨는 때</b> — 일봉은 매일 오전 9시 마감, 그 뒤 순위 계산</li><li><b>첫 절반</b> — 9시 이후 새 일봉 초반 (이미 +5%↑면 건너뛰기)</li><li><b>나머지 절반</b> — 5일 안에 할 일의 '중간 가격'까지 내려오면</li><li><b>산 뒤</b> — 매일 9시 마감 뒤: 일봉이 선 아래 · 고점에서 -10% · 손절 참고 아래 → 정리</li></ol></details><div class="nsec">⚠ 보유 코인 주의</div>${warnHtml}<div class="nsec">👀 지켜볼 코인</div>${watchHtml}`);
 }
 $("#nowBox").addEventListener("click", e => {
   if (e.target.id === "nowFold") { store.set("nowFold", !store.get("nowFold", false)); renderNow(); return; }
