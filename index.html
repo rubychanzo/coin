@@ -232,7 +232,7 @@ footer.disc { padding: 14px; font-size: 11.5px; color: var(--muted); text-align:
 <body>
 <header class="top">
   <div class="toprow">
-    <h1>코인 이평 알리미 <small class="ver">v21</small></h1>
+    <h1>코인 이평 알리미 <small class="ver">v22</small></h1>
     <button id="detailBtn" class="detailbtn"></button>
     <button id="btcChip" title="BTC 차트"><b>BTC</b><span id="btcPx">…</span></button>
   </div>
@@ -943,8 +943,18 @@ function coinTodo(x, tfLabel) {
   if (x.kind === 'near') return '① 적어 두기 → ' + bar + ' 마감이 ' + x.P + '선을 넘는지 확인 (지금 ' + x.gap.toFixed(1) + '%)';
   // 10/19 과거 시험(어디서 살지): 선까지 눌림을 기다리면 28%는 못 사서 전체 결과가 줄었고, 종가와 선의 중간까지 눌릴 때는 87% 살 수 있고 산 경우 조금 나았음
   var mid = (x.price + x.ma) / 2;
-  if (x.step === 2) return '② 🟣 돌파 ' + bar + ' 마감 → 다음 봉 시가 근처에서 절반 (그사이 이미 +5%↑ 뛰었으면 건너뛰고 아래 중간 가격만) · 나머지 절반은 5봉 안에 ' + px(mid) + '(종가와 ' + x.P + '선 중간)까지 눌리면 (안 눌리면 절반만) · 정리: 산 뒤 고점에서 -10% 또는 ' + bar + ' 마감이 선 아래';
-  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → 아직 안 샀다면 ' + px(mid) + '(지금 가격과 ' + x.P + '선 중간) 근처 눌림에 절반 · ' + bar + '이 직전 고점(' + px(x.hi20) + ') 위에서 마감하면 나머지 절반 · 정리: 산 뒤 고점에서 -10% 내려오거나 ' + bar + ' 마감이 ' + x.P + '선 아래면 (과거 시험에서 이 방식이 가장 나았음)';
+  // 언제까지 볼지: 봉 길이 × 봉 수를 실제 날짜·시각으로 (한국 시각)
+  var BAR_MS = { '일봉': 864e5, '4시간봉': 4 * 3600e3, '1시간봉': 3600e3 }[bar] || 0;
+  var when = function (t) { return new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }); };
+  var crossT = x.barT && BAR_MS ? x.barT - ((x.days || 1) - 1) * BAR_MS : null;   // 돌파한 봉이 시작한 시각
+  var openT = crossT ? crossT + BAR_MS : null;                                      // 그다음 봉(첫 절반 살 봉)이 시작한 시각
+  var untilT = crossT ? crossT + 6 * BAR_MS : null;                                  // 돌파 뒤 5봉이 끝나는 시각
+  if (x.step === 2) return '② 🟣 돌파 ' + bar + ' 마감 → 첫 절반: ' + (openT ? when(openT) + '에 시작한 새 ' + bar + ' 초반, ' : '다음 ' + bar + ' 초반, ') + px(x.price * 1.05) + ' 아래일 때 (돌파 종가 ' + px(x.price) + '보다 +5% 넘게 올라 있으면 첫 절반은 건너뛰고 나머지 절반 주문만)'
+    + ' · 나머지 절반: ' + (untilT ? when(untilT) + '까지(' + bar + ' 5개) ' : bar + ' 5개 안에 ') + px(mid) + '(돌파 종가와 ' + x.P + '선 중간)에 지정가로 걸어 두기 — 안 내려오면 절반만 들고 감'
+    + ' · 정리: 산 뒤 고점에서 -10% 또는 ' + bar + ' 마감이 ' + x.P + '선 아래';
+  if (x.step === 3) return '③ ' + x.days + '봉째 유지 → 아직 안 샀다면: ' + px(mid) + '(지금 가격과 ' + x.P + '선 중간) 근처로 내려올 때 절반 (지정가)'
+    + ' · 나머지 절반: ' + bar + '이 직전 고점 ' + px(x.hi20) + ' 위에서 마감하면'
+    + ' · 정리: 산 뒤 고점에서 -10% 또는 ' + bar + ' 마감이 ' + x.P + '선 아래 (과거 시험에서 이 방식이 가장 나았음)';
   return '지켜보기 → 돌파했지만 ' + (x.why.join(', ') || '조건 부족');
 }
 // 거래소가 달라도 같은 코인끼리 묶는 이름 (선물 1000PEPE → PEPE)
